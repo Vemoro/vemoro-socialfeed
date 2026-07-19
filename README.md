@@ -1,0 +1,358 @@
+# Local Instagram Feed
+
+Local Instagram Feed synchronisiert Beiträge eines eigenen professionellen Instagram-Kontos serverseitig in WordPress. Bilder, Poster, optionale Videos, Captions und Metadaten werden lokal gespeichert. Beim bloßen Anzeigen des Feeds muss der Browser des Besuchers deshalb keine Verbindung zu Instagram oder Meta aufbauen.
+
+> Das Plugin ist so konzipiert, dass beim bloßen Anzeigen des lokal gespeicherten Feeds keine Verbindung des Besucher-Browsers zu Instagram oder Meta erforderlich ist. Die rechtliche Zulässigkeit der veröffentlichten Inhalte, insbesondere Bildrechte und personenbezogene Daten, bleibt vom Websitebetreiber zu prüfen.
+
+## Voraussetzungen
+
+- WordPress 6.5 oder neuer
+- PHP 8.1 oder neuer mit JSON, Fileinfo und entweder Sodium oder OpenSSL
+- Schreibbares WordPress-Uploadverzeichnis
+- Instagram Business- oder Creator-Konto
+- Meta-App mit „Instagram API with Instagram Login“
+- Öffentlich erreichbare HTTPS-URL für den produktiven OAuth-Callback
+
+Das Plugin benötigt weder Composer noch npm zur Laufzeit. Die in `composer.json` aufgeführten Pakete dienen ausschließlich der Entwicklung und den Tests.
+
+## Installation
+
+1. Den Ordner `local-instagram-feed` nach `wp-content/plugins/` kopieren.
+2. „Local Instagram Feed“ in WordPress aktivieren.
+3. Im neuen Adminmenü zuerst App-ID, App-Secret und gegebenenfalls die Redirect URI speichern.
+4. Die angezeigte Redirect URI exakt in der Meta-App hinterlegen.
+5. „Mit Instagram verbinden“ anklicken und anschließend die erste Synchronisierung starten.
+
+Das vorhandene Smash-Balloon-Plugin wird weder verändert noch migriert und kann parallel installiert bleiben.
+
+## Meta-App und Instagram Login
+
+Die Einrichtung in Meta kann sich ändern. Maßgeblich ist immer die aktuelle offizielle Dokumentation zur [Instagram API with Instagram Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/). Für dieses Plugin gilt:
+
+- Login-Typ: Business Login for Instagram
+- Konto: Business oder Creator; ein privates Consumer-Konto wird nicht unterstützt
+- Scope: `instagram_business_basic`
+- Standard Access reicht für eigene oder verwaltete Konten, die in der App hinterlegt sind
+- Advanced Access und gegebenenfalls App Review sind nötig, wenn die App fremde professionelle Konten bedienen soll
+- Eine verknüpfte Facebook-Seite ist für diese API-Variante nicht erforderlich
+
+Als Redirect URI wird standardmäßig verwendet:
+
+```text
+https://example.org/wp-admin/admin.php
+```
+
+Die Callback-URI enthÃ¤lt bewusst keine Query-Parameter, da Instagram diese beim OAuth-RÃ¼cksprung entfernt. Produktion verlangt HTTPS. HTTP wird nur akzeptiert, wenn WordPress die Umgebung als `local` ausweist oder ein Loopback-Host verwendet wird.
+
+### Secrets über wp-config.php
+
+Die sicherste betriebliche Variante ist:
+
+```php
+define('LIF_INSTAGRAM_APP_ID', '123456789');
+define('LIF_INSTAGRAM_APP_SECRET', 'replace-with-the-real-secret');
+```
+
+Konstanten haben Vorrang vor Datenbankwerten. Ohne Konstanten verschlüsselt das Plugin das App Secret und Token mit Sodium `secretbox`, ersatzweise AES-256-GCM. Der Schlüssel wird aus WordPress-Salts abgeleitet. Steht keine sichere Verschlüsselung bereit, verweigert das Plugin die Secret-Speicherung in der Datenbank.
+
+## API-Endpunkte und Token
+
+Der zentral konfigurierbare Standard ist Graph API `v25.0`. Vor einem späteren Versionswechsel sollte der Betreiber Metas Changelog und Feldverfügbarkeit prüfen.
+
+Serverseitig werden verwendet:
+
+```text
+GET  https://www.instagram.com/oauth/authorize
+POST https://api.instagram.com/oauth/access_token
+GET  https://graph.instagram.com/access_token
+GET  https://graph.instagram.com/refresh_access_token
+GET  https://graph.instagram.com/v25.0/{ig-user-id}
+GET  https://graph.instagram.com/v25.0/{ig-user-id}/media
+```
+
+Der OAuth-Code wird gegen ein Short-Lived Token getauscht, anschließend wird ein Long-Lived Token bezogen. Sieben Tage vor dem erwarteten Ablauf versucht das Plugin die Erneuerung. Fehler lösen Wiederholungen nach 15 Minuten, einer Stunde, sechs Stunden und anschließend täglich aus. Token, App Secret, Authorization-Header und OAuth-Codes werden nie geloggt oder an Browser-Responses ausgegeben.
+
+## Synchronisierung und lokale Speicherung
+
+Der Standardlauf lädt die neuesten 12 Beiträge alle zwei Stunden. Unterstützt werden `IMAGE`, `VIDEO`, `CAROUSEL_ALBUM` und Reels über `media_product_type=REELS`.
+
+- WordPress-CPT: `lif_instagram_post`
+- Eindeutiger Index: `{$wpdb->prefix}lif_instagram_media`
+- Begrenztes Log: `{$wpdb->prefix}lif_logs`
+- Cron-Hook: `lif_sync_instagram_feed`
+- Lock: `lif_sync_lock`
+
+Temporäre Media-URLs allein ändern den semantischen Beitrags-Hash nicht. Vorhandene, vollständige Attachments werden wiederverwendet. Karussellkinder werden separat gespeichert; ein defektes Kind bricht den übrigen Lauf nicht ab. Manuell gepflegte WordPress-Alt-Texte werden nicht überschrieben.
+
+Werden Darstellungsoptionen geändert, markiert das Plugin den nächsten Lauf als Vollaktualisierung. Dabei werden alle bereits vorhandenen Beiträge im abgerufenen Bestand erneut verarbeitet, bestehende gültige Attachments aber weiterhin wiederverwendet. Der Synchronisierungs-Tab zeigt an, ob eine Vollaktualisierung aussteht.
+
+Ein fehlender Beitrag gilt nur innerhalb eines erfolgreich abgerufenen aktuellen Zeitfensters als abwesend. Erst drei erfolgreiche entsprechende Läufe führen zur gewählten Aktion: behalten, deaktivieren, Papierkorb oder endgültig löschen. API- und Pagingfehler sind kein Löschsignal.
+
+Für Beiträge oberhalb des konfigurierten Synchronisierungslimits gibt es eine getrennte Aufbewahrungsregel: dauerhaft behalten, sofort oder nach 7, 30, 90, 180 beziehungsweise 365 Tagen löschen. Die Frist beginnt beim ersten vollständigen und fehlerfreien Lauf, in dem ein Beitrag außerhalb des Limits liegt. Beim Löschen werden Plugin-Zuordnungen und nicht anderweitig verwendete Plugin-Medien einschließlich lokaler Videos entfernt. Wird das Limit später erhöht, wird die laufende Frist für wieder eingeschlossene Beiträge zurückgesetzt.
+
+Videos werden lokal als MP4 gespiegelt und mit lokalem Poster sowie `preload="metadata"` ausgegeben, damit die nativen Videosteuerungen zuverlässig initialisiert werden. Beim Darüberfahren startet ein Video stumm; startet ein anderes, pausiert das zuvor aktive Video. Bei aktivierter Systemoption `prefers-reduced-motion` findet kein automatischer Start statt, die Wiedergabe bleibt aber per Schaltfläche bedienbar. `controlsList="nodownload"` blendet den Download-Eintrag der Browsersteuerung aus; zusätzlich wird das Kontextmenü direkt auf dem Video unterdrückt. Da die Videodatei technisch an den Browser übertragen werden muss, ist dies kein absoluter Kopierschutz gegen Entwicklerwerkzeuge oder Netzwerkzugriffe.
+
+Alle Medien erscheinen standardmäßig in einer einheitlichen 9:16-Reel-Fläche. `object-fit: contain` verhindert Zuschnitt; Querformatbilder und -videos erhalten deshalb freie Flächen oberhalb und unterhalb. Vollständige Beitragstexte bleiben im HTML erhalten und können bei längeren Captions auf- und zugeklappt werden.
+
+Der Feed wird mit JavaScript responsiv nach ungefähr 25 Prozent seiner zweiten Beitragszeile ausgeblendet. Die lokale Schaltfläche „Mehr anzeigen“ fügt die weiteren Beiträge erst beim Klick aus einem inaktiven HTML-Template ein und klappt sie mit einer ruhigen Aufslide-Animation auf. Deren Bilder und Videos werden daher vorher nicht angefordert. Bilder verwenden zusätzlich natives Lazy-Loading und Videos laden nach dem Einfügen zunächst nur Metadaten. Ohne JavaScript bleiben die ersten zwei Zeilen zugänglich. Bei reduzierter Bewegung wird ohne Animation geöffnet.
+
+Likes und Kommentaranzahl werden mit dem normalen Medienabruf synchronisiert und lokal angezeigt. Kommentartexte werden weder geladen noch ausgegeben. Das Plugin fordert weiterhin ausschließlich `instagram_business_basic` an. Share-, View-, Save- oder Repost-Statistiken werden nicht abgerufen, da sie zusätzliche Insights-Berechtigungen erfordern können. Erkannte Reposts werden anhand der vorhandenen Medienart beziehungsweise eines abweichenden Kontonamens aus dem Feed ausgeblendet.
+
+## Ausgabe
+
+### Gutenberg
+
+Im Blockeditor den dynamischen Block „Lokaler Instagram-Feed“ einfügen. Die Vorschau und das Frontend werden serverseitig aus lokalen Daten erzeugt.
+
+### Shortcode
+
+```text
+[local_instagram_feed]
+[local_instagram_feed posts="9" columns="3" columns_tablet="2" columns_mobile="1" show_caption="true"]
+[local_instagram_feed posts="6" aspect_ratio="4/5" show_date="false" order="ASC" class="startseite-feed"]
+```
+
+Unterstützt werden `posts`, `columns`, `columns_tablet`, `columns_mobile`, `show_caption`, `show_date`, `show_username`, `show_metrics`, `show_link`, `caption_length`, `aspect_ratio`, `order` und `class`.
+
+### Theme-Funktion
+
+```php
+if (function_exists('lif_render_feed')) {
+    echo lif_render_feed(array('posts' => 9, 'columns' => 3)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+}
+```
+
+Die Funktion liefert bereits kontextbezogen escaptes Plugin-Markup.
+
+Sind externe Instagram-Links aktiviert, verlinkt der Benutzername auf das Instagram-Profil. Ein rechtsbündiges Instagram-Symbol unter dem Medium verlinkt den zugehörigen Instagram-Beitrag; Bild, Karussell und Video selbst bleiben unverlinkt und lokal bedienbar. Vor jeder Weiterleitung erscheint ein lokaler Datenschutzhinweis. Erst nach Bestätigung wird Instagram im selben oder – entsprechend der Darstellungseinstellung – in einem neuen Tab geöffnet. Bei deaktivierten externen Links werden weder Profil- noch Beitragslinks ausgegeben.
+
+## WP-Cron, WP-CLI und echter Server-Cron
+
+WP-Cron wird normalerweise erst durch Websiteaufrufe angestoßen. Action Scheduler wird genutzt, wenn seine öffentliche API bereits geladen ist; andernfalls plant das Plugin WP-Cron.
+
+```bash
+wp local-instagram-feed sync
+wp local-instagram-feed status
+wp local-instagram-feed refresh-token
+wp local-instagram-feed clear-cache
+```
+
+Beispiel für einen echten Server-Cron:
+
+```cron
+*/30 * * * * cd /pfad/zu/wordpress && wp local-instagram-feed sync --quiet
+```
+
+## Datenschutz- und Sicherheitskonzept
+
+- Keine Cookies, Besucher-IDs, IP-Protokollierung, Fingerprints oder Telemetrie
+- Keine Meta-Skripte, SDKs, iframes, Pixel, Fonts oder Styles im Frontend
+- Keine Browseraufrufe an die Instagram API
+- Renderer akzeptiert nur Attachment-URLs mit demselben Host wie `home_url()`
+- API-Zugriffe nur bei OAuth, Prüfung, Tokenpflege oder Synchronisierung
+- OAuth-State ist zufällig, benutzergebunden, gehasht, zehn Minuten gültig und nur einmal verwendbar
+- Adminaktionen verwenden `manage_options` und WordPress-Nonces
+- Mediendownloads erlauben HTTPS und Meta-Medienhosts, prüfen DNS/IP gegen private Netze, jeden Redirect, Dateigröße und echten MIME-Typ
+- Logs entfernen Schlüssel mit Bezeichnungen wie Token, Secret, Authorization oder Code
+
+Normale Instagram-Links werden nur bei aktivierter Einstellung ausgegeben, als externe Links gekennzeichnet und erst durch einen bewussten Klick aufgerufen.
+
+Im Datenschutz-Tab können alle synchronisierten Beiträge und Zuordnungen gelöscht werden. Plugin-eigene Medien werden nur entfernt, wenn sie nicht als Beitragsbild oder Inhalt außerhalb des Instagram-Feeds referenziert sind. Verbindung und Einstellungen bleiben erhalten, sodass anschließend sofort neu synchronisiert werden kann.
+
+## Browser-Abnahme ohne Meta-Requests
+
+Nach einer erfolgreichen Synchronisierung:
+
+1. Eine Seite mit Block oder Shortcode öffnen.
+2. Browser-Entwicklertools öffnen und den Network-Tab leeren.
+3. Die Seite vollständig neu laden.
+4. Nacheinander nach `instagram`, `facebook`, `meta`, `fbcdn`, `cdninstagram`, `scontent` und `graph.facebook` filtern.
+5. Erwartung: keine Requests an diese Domains. Ein normaler externer Link darf im HTML stehen, wird aber nicht angefordert.
+6. Den HTML-Quelltext zusätzlich nach `instagram.com/embed`, `instagram-media`, `embed.js`, `fbcdn`, `cdninstagram`, `scontent` und `graph.facebook.com` durchsuchen.
+7. Alle Bild-, Poster-, `srcset`-, Script- und Stylesheet-URLs müssen auf die eigene Website zeigen.
+
+## Tests und Entwicklung
+
+```bash
+composer install
+composer test
+composer lint
+```
+
+`WP_TESTS_DIR` muss auf die WordPress-PHPUnit-Testbibliothek zeigen. HTTP-Integrationstests verwenden `pre_http_request` und Fixtures; automatisierte Tests senden keine echten Meta-Anfragen.
+
+Die JavaScript-Tests benötigen nur Node.js und können einzeln ausgeführt werden:
+
+```bash
+node tests/js/block-editor.test.js
+node tests/js/frontend-audio.test.js
+node tests/js/frontend-caption.test.js
+node tests/js/frontend-reveal.test.js
+node tests/js/frontend-row-height.test.js
+```
+
+Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus einem markierten Commit erstellen:
+
+```bash
+git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-1.0.29.zip HEAD
+```
+
+## Fehlerbehebung
+
+- **Nicht verbunden:** App-ID, App Secret, exakte Redirect URI und professionellen Kontotyp prüfen.
+- **OAuth-State ungültig:** Verbindung erneut aus demselben eingeloggten WordPress-Adminfenster starten; alte Links laufen nach zehn Minuten ab.
+- **Token kann nicht gespeichert werden:** Sodium/OpenSSL aktivieren oder Secrets in `wp-config.php` setzen.
+- **Cron läuft nicht:** Diagnose und `DISABLE_WP_CRON` prüfen oder echten Server-Cron verwenden.
+- **Uploadfehler:** Schreibrechte, WordPress-Limits sowie Bild-/Videolimit im Plugin prüfen.
+- **Kein Bild im Feed:** Die Diagnose auf fremde CDN-Filter prüfen. Das Plugin lehnt absichtlich URLs außerhalb der eigenen Domain ab.
+- **Teilweise fehlendes Karussell:** Logs zeigen das betroffene Kind; andere Beiträge und Kinder werden weiterverarbeitet.
+
+## Deaktivierung und Deinstallation
+
+Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen des Plugins bleiben Daten standardmäßig erhalten. Nur wenn zuvor „Alle Plugin-Daten bei Deinstallation löschen“ aktiviert wurde, entfernt `uninstall.php` Plugin-Beiträge, plugin-eigene Attachments, Tabellen, Optionen, Secrets, Transients und Zeitpläne endgültig.
+
+## Grenzen
+
+- Genau ein professionelles Instagram-Konto pro WordPress-Installation
+- Keine Beiträge fremder oder privater Konten, keine Hashtagfeeds und kein Scraping
+- Keine Garantie, dass Meta unveränderte Endpunkte, Felder oder Review-Regeln beibehält
+- Externe Instagram-Links verlassen beim Anklicken bewusst die lokale Website
+- Die Nutzung entbindet den Betreiber nicht von der Prüfung von Bildrechten, Einwilligungen, Löschpflichten und Datenschutzerklärung
+
+## Changelog
+
+### 1.0.29
+
+- Der Feed-Block verwendet oben und unten denselben responsiven Sektionsabstand wie der Sunflower-Block „Aktuelles“: `var(--half-block-spacing)` mit einem Fallback von 90 Pixeln.
+- Über die Gutenberg-Abstandseinstellungen individuell gesetzte Innenabstände überschreiben diesen Standard weiterhin.
+
+### 1.0.28
+
+- Für die optionale Block-Überschrift stehen Theme-Schriftarten und Theme-Schriftgrößen sowie eine freie Pixelgröße zur Auswahl.
+- Zusätzlich lassen sich Textfarbe, links-/mittig-/rechtsbündige Ausrichtung, normaler oder fetter Schriftschnitt, normaler oder kursiver Stil und der Abstand zum Feed konfigurieren.
+
+### 1.0.27
+
+- Der Gutenberg-Block kann optional eine eigene Überschrift ausgeben; ihre Ebene ist zwischen H2 und H6 wählbar.
+- Die Überschrift liegt im selben Wrapper wie der Feed und wird deshalb sowohl vom inhaltsbreiten als auch vom viewportbreiten Sektionshintergrund umfasst.
+
+### 1.0.26
+
+- Der Gutenberg-Block bietet eine eigene Hintergrundauswahl mit allen Farben der aktiven Theme-Palette und zusätzlich `Grüner Sand` (`#F3FAF6`) wie beim Sunflower-Block „Aktuelles“.
+- Unabhängig von der Farbe lässt sich auswählen, ob der Hintergrund auf die Inhaltsbreite begrenzt bleibt oder bis an beide Viewportränder reicht. Der Feed-Inhalt selbst behält dabei seine normale Breite.
+
+### 1.0.25
+
+- Der Gutenberg-Block unterstützt native Hintergrundfarben und Verläufe aus der aktiven Theme-Palette sowie konfigurierbare Innenabstände und vertikale Außenabstände.
+- Die Block-Support-Klassen werden über den offiziellen WordPress-Wrapper auch im Frontend ausgegeben.
+
+### 1.0.24
+
+- Die Gutenberg-Vorschau verwendet `useBlockProps` und ist damit wieder als normaler Block auswählbar – einschließlich Block-Werkzeugleiste und Einstellungsbereich.
+- „Mehr anzeigen“-Verlauf und Play-Symbole werden im Editor frontendnah, aber bewusst ohne Funktion dargestellt.
+
+### 1.0.23
+
+- Videos werden erst nach dem vollständigen Abschluss der Schließanimation pausiert. Dadurch wird auch ein während des Zusammenklappens neu gestartetes Video zuverlässig erfasst.
+- Ein Sicherheits-Timer führt den Abschluss auch dann aus, wenn ein Browser kein `transitionend`-Ereignis liefert.
+
+### 1.0.22
+
+- Der geöffnete Feed besitzt eine sticky Schaltfläche „Feed schließen“. Sie bleibt innerhalb des Feed-Bereichs am unteren Fensterrand erreichbar und liegt nach Erreichen des Endes unter den Beiträgen.
+- Beim Schließen werden sämtliche Videos des Feeds pausiert – auch über native Browsersteuerungen gestartete Wiedergaben. Anschließend klappt der Feed wieder auf die Vorschauhöhe zusammen und der Feedanfang wird in den sichtbaren Bereich geholt.
+
+### 1.0.21
+
+- Medien verwenden ihre natürlichen lokalen Proportionen. Eine Grid-Zeile wird nur dann auf eine gemeinsame Höhe gebracht, wenn ihre Medien tatsächlich unterschiedlich hoch sind; bereits gleich hohe Medien bleiben unangetastet.
+
+### 1.0.20
+
+- Beitragsdaten verwenden wieder ausgeschriebene deutsche Monatsnamen im Format `17. Mai 2026`.
+
+### 1.0.19
+
+- Beitragstexte mit mehr als vier sichtbaren Zeilen sind wieder standardmäßig eingeklappt und über „Mehr anzeigen“ vollständig lesbar.
+- Die Entscheidung basiert auf der tatsächlichen Darstellungshöhe und nicht mehr auf der konfigurierten Textlänge; die Gutenberg-Vorschau verwendet dieselbe Vier-Zeilen-Begrenzung.
+
+### 1.0.18
+
+- Beitragsdaten werden im deutschen Format `TT.MM.JJJJ` ausgegeben.
+- Die dynamische Gutenberg-Vorschau lädt das Feed-Stylesheet und entspricht damit wieder dem responsiven Frontend-Grid.
+
+### 1.0.17
+
+- Der Gutenberg-Block übernimmt ohne eigene Overrides die globalen Darstellungseinstellungen; 24 konfigurierte Beiträge ergeben daher auch 24 Frontend-Beiträge.
+- Die zuverlässige Zwei-Frame-Aufslide-Animation dauert wieder zwei Sekunden.
+
+### 1.0.16
+
+- Ausgangs- und Zielhöhe des Feeds werden in getrennten Renderzyklen gesetzt, sodass das Aufsliden zuverlässig animiert wird.
+- Die gleichmäßigere Aufslide-Animation dauert jetzt 3,5 Sekunden.
+
+### 1.0.15
+
+- `content-visibility` wurde von den Feed-Beiträgen entfernt, damit sichtbare native Videosteuerungen und ihre Klickflächen deckungsgleich bleiben.
+
+### 1.0.14
+
+- Native Videosteuerungen werden über `preload="metadata"` zuverlässig initialisiert; Videos im inaktiven Template bleiben bis zum Aufklappen ungeladen.
+- Solange der Verlauf sichtbar ist, blockiert er die darunterliegenden Inhalte wieder bewusst.
+
+### 1.0.13
+
+- Der Feed blendet responsiv nach etwa 25 Prozent der zweiten Beitragszeile aus und klappt per „Mehr anzeigen“ ruhig nach unten auf.
+- Ein inaktives HTML-Template, Lazy-Loading, `content-visibility` und `preload="none"` verhindern das anfängliche Laden ausgeblendeter Medien.
+- Die Aufslide-Animation dauert zwei Sekunden; der Verlauf blockiert keine Videosteuerung und besuchte Instagram-Symbole wechseln nicht mehr die Theme-Farbe.
+
+### 1.0.10
+
+- Überzählige lokale Beiträge können sofort oder nach einer wählbaren Aufbewahrungsfrist samt unreferenzierten Plugin-Medien gelöscht werden.
+- Medien selbst sind nicht mehr verlinkt; der Instagram-Beitragslink erscheint als rechtsbündiges Symbol unter dem Medium.
+- Der native Video-Downloadeintrag und das Kontextmenü auf lokalen Videos werden unterdrückt.
+
+### 1.0.9
+
+- Benutzername und Beitragsmedium können auf Profil beziehungsweise Beitrag bei Instagram verlinken.
+- Vor jeder externen Instagram-Navigation erscheint ein lokaler Bestätigungsdialog; die Einstellung für neue Tabs wird berücksichtigt.
+
+### 1.0.8
+
+- Theme-seitige Abstände für `ul li` werden innerhalb der Interaktionsanzeige zuverlässig auf null gesetzt.
+
+### 1.0.7
+
+- Herz- und Kommentar-Symbol verwenden gleich hohe SVG-Geometrien; auch die Zahlen werden im selben Grau dargestellt.
+- Stummschaltung und Lautstärke werden zwischen allen Feed-Videos auf derselben Seite synchronisiert.
+
+### 1.0.6
+
+- Ein per Hover gestartetes Video läuft weiter, bis ein anderes Video startet; die nativen Video-Steuerelemente sind wieder verfügbar.
+- Like- und Kommentar-Icons sind einheitlich ausgerichtet und dezenter grau dargestellt.
+
+### 1.0.5
+
+- Lokale Videos starten beim Hover; es läuft immer höchstens ein Video gleichzeitig und das Play-Symbol verschwindet während der Wiedergabe.
+- Einheitliche 9:16-Reel-Flächen zeigen Hoch- und Querformat ohne Zuschnitt.
+- Vollständige Captions sind aufklappbar; Likes und Kommentaranzahl werden mit `instagram_business_basic` synchronisiert.
+- Erkannte Reposts werden ohne zusätzliche Berechtigungen ausgeblendet; Insights- und Repost-Statistiken werden nicht angefordert.
+
+### 1.0.4
+
+- DarstellungsÃ¤nderungen lÃ¶sen beim nÃ¤chsten Sync eine vollstÃ¤ndige Aktualisierung der lokalen BeitrÃ¤ge aus.
+- Der Datenschutz-Tab kann alle synchronisierten BeitrÃ¤ge, Zuordnungen und nicht anderweitig verwendeten Plugin-Medien sicher lÃ¶schen.
+
+### 1.0.3
+
+- Queryfreie OAuth-Callback-URI eingefÃ¼hrt, damit Autorisierungsanfrage und Token-Austausch dieselbe URI verwenden.
+
+### 1.0.2
+
+- Instagram-OAuth-Rücksprünge werden auch dann sicher verarbeitet, wenn Meta an `wp-admin/admin.php` nur `code` und `state` zurückgibt.
+
+### 1.0.1
+
+- Deutsche Übersetzungen für die sichtbare Feed-Ausgabe und die Gutenberg-Blockeinstellungen ergänzt.
+
+### 1.0.0
+
+- Erste produktionsfähige Version mit OAuth, verschlüsselter Tokenablage, lokalem Medienmirror, Karussells, optionalen lokalen Videos, Cron, WP-CLI, Block, Shortcode, Theme-API, Diagnose und Datenschutzprüfung.

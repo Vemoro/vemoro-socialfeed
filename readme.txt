@@ -1,0 +1,132 @@
+=== Local Instagram Feed ===
+Contributors: site-owner
+Tags: instagram, privacy, local media, feed, gutenberg
+Requires at least: 6.5
+Tested up to: 7.0
+Requires PHP: 8.1
+Stable tag: 1.0.29
+License: GPLv2 or later
+
+Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
+
+== Description ==
+
+Local Instagram Feed uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media.
+
+The plugin does not claim that a particular use is legally GDPR compliant. Operators remain responsible for published content, image rights, personal data, and their privacy notice.
+
+See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and browser acceptance instructions.
+
+== Installation ==
+
+1. Activate the plugin.
+2. Configure a Meta App ID and Secret.
+3. Add the displayed HTTPS redirect URI to Meta's Instagram Login configuration.
+4. Connect a Business or Creator account.
+5. Run the first synchronization and add the block or shortcode.
+
+== Changelog ==
+
+= 1.0.29 =
+* Uebernimmt fuer den Feed-Block den responsiven vertikalen Sektionsabstand des Sunflower-Aktuelles-Blocks.
+
+= 1.0.28 =
+* Erweitert die optionale Ueberschrift um Theme-Schriftarten und -groessen, freie Schriftgroesse, Farbe, Ausrichtung, Schriftschnitt, Schriftstil und Abstand.
+
+= 1.0.27 =
+* Ergaenzt eine optionale Block-Ueberschrift mit waehlbarer Ebene H2 bis H6 innerhalb des Feed-Hintergrunds.
+
+= 1.0.26 =
+* Fuegt dem Gutenberg-Block eine eigene Hintergrundauswahl aus Theme-Farben plus Gruener Sand hinzu.
+* Der Hintergrund kann wahlweise auf die Inhaltsbreite begrenzt oder ueber die gesamte Viewportbreite ausgedehnt werden.
+
+= 1.0.25 =
+* Aktiviert native Gutenberg-Hintergrundfarben, Farbverlaeufe sowie Innen- und vertikale Aussenabstaende fuer den Feed-Block.
+
+= 1.0.24 =
+* Bindet die Gutenberg-Vorschau ueber useBlockProps korrekt als auswaehlbaren Block mit Werkzeugleiste und Inspector ein.
+* Zeigt Verlauf, Mehr-anzeigen-Schaltflaeche und Play-Symbole im Editor als frontendnahe, nicht interaktive Vorschau.
+
+= 1.0.23 =
+* Pausiert alle Feed-Videos erst nach dem vollstaendigen Abschluss der Schliessanimation; ein Sicherheits-Timer deckt fehlende transitionend-Ereignisse ab.
+
+= 1.0.22 =
+* Zeigt im geoeffneten Feed eine sticky Schaltflaeche zum erneuten Schliessen und legt sie am Feed-Ende unter den Beitraegen ab.
+* Pausiert beim Schliessen saemtliche Videos des Feeds, auch bei nativer Wiedergabe.
+
+= 1.0.21 =
+* Verwendet die natuerlichen lokalen Medienproportionen und gleicht eine Grid-Zeile nur bei unterschiedlichen Medienhoehen an.
+
+= 1.0.20 =
+* Zeigt Beitragsdaten mit ausgeschriebenem lokalisiertem Monat im Format 17. Mai 2026 an.
+
+= 1.0.19 =
+* Klappt Beitragstexte anhand ihrer tatsaechlichen Hoehe nach vier Zeilen ein, unabhaengig von der gespeicherten Textlaenge.
+* Begrenzt lange Beitragstexte auch in der Gutenberg-Vorschau auf vier Zeilen.
+
+= 1.0.18 =
+* Zeigt Beitragsdaten im deutschen Format TT.MM.JJJJ an.
+* Laedt das Feed-Stylesheet auch fuer die dynamische Gutenberg-Vorschau.
+
+= 1.0.17 =
+* Der Gutenberg-Block uebernimmt ohne eigene Overrides alle globalen Darstellungseinstellungen einschliesslich der Beitragszahl.
+* Setzt die Aufslide-Dauer bei beibehaltener Zwei-Frame-Animation auf zwei Sekunden.
+
+= 1.0.16 =
+* Erzwingt getrennte Renderzyklen fuer Start- und Zielhoehe und verlaengert das sichtbare Aufsliden auf 3,5 Sekunden.
+
+= 1.0.15 =
+* Entfernt content-visibility von Feed-Beitraegen, damit Darstellung und Klickflaechen nativer Videosteuerungen deckungsgleich bleiben.
+
+= 1.0.14 =
+* Initialisiert die nativen Videosteuerungen wieder ueber Metadaten, waehrend nachgelagerte Videos bis zum Aufklappen inaktiv bleiben.
+* Der sichtbare Verlauf blockiert die darunterliegenden Inhalte wieder bewusst.
+
+= 1.0.13 =
+* Verlaengert die Aufslide-Animation auf zwei Sekunden.
+* Der Feed-Verlauf blockiert keine Videosteuerung mehr; besuchte Instagram-Symbole behalten ihre Farbe.
+
+= 1.0.12 =
+* Blendet den Feed responsiv nach etwa 25 Prozent der zweiten Beitragszeile aus und oeffnet ihn per Schaltflaeche mit einer ruhigen Aufslide-Animation.
+* Reduziert initiale Browserarbeit durch Lazy-Loading, content-visibility und Video-Preload none.
+
+= 1.0.10 =
+* Adds configurable retention for locally stored posts exceeding the synchronization limit.
+* Removes links from media and replaces the text link with a right-aligned Instagram icon.
+* Hides the native video download action and suppresses the video context menu.
+
+= 1.0.9 =
+* Links usernames to Instagram profiles and post media to their Instagram posts when external links are enabled.
+* Adds a local privacy confirmation dialog before every Instagram navigation and respects the new-tab setting.
+
+= 1.0.8 =
+* Resets theme-provided list-item margins inside the interaction row.
+
+= 1.0.7 =
+* Uses geometrically aligned interaction icons and applies the same gray to counts.
+* Shares mute and volume changes between all feed videos on the current page.
+
+= 1.0.6 =
+* Keeps a hovered video playing until another video starts and restores native video controls.
+* Aligns interaction icons and uses a softer gray icon color.
+
+= 1.0.5 =
+* Adds local hover playback with only one active video at a time.
+* Uses a consistent 9:16 Reel stage with non-cropping letterboxing.
+* Synchronizes and displays like and comment counts without loading comments.
+* Adds expandable full captions and suppresses detected reposts without extra permissions.
+
+= 1.0.4 =
+* Added a full post refresh after display changes and a privacy-tool action for deleting all synchronized data.
+
+= 1.0.3 =
+* Use a query-free OAuth callback URI so the authorization request and token exchange remain identical.
+
+= 1.0.2 =
+* Accept Instagram OAuth callbacks when Meta returns only code and state on wp-admin/admin.php.
+
+= 1.0.1 =
+* Added German translations for the frontend feed and Gutenberg controls.
+
+= 1.0.0 =
+* Initial release.

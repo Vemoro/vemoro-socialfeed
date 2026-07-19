@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<ruleset name="Local Instagram Feed">
+  <description>WordPress Coding Standards for the plugin.</description>
+  <file>local-instagram-feed.php</file><file>includes</file><file>uninstall.php</file>
+  <arg name="extensions" value="php"/><arg value="sp"/><rule ref="WordPress"/><rule ref="PHPCompatibilityWP"/>
+  <config name="testVersion" value="8.1-"/><exclude-pattern>tests/fixtures/*</exclude-pattern>
+</ruleset>

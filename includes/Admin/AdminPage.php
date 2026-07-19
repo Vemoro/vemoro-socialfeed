@@ -1,0 +1,160 @@
+<?php
+namespace LocalInstagramFeed\Admin;
+
+use LocalInstagramFeed\Api\InstagramApiClient;
+use LocalInstagramFeed\Api\OAuthService;
+use LocalInstagramFeed\Api\TokenService;
+use LocalInstagramFeed\Config;
+use LocalInstagramFeed\CronManager;
+use LocalInstagramFeed\Frontend\FeedRenderer;
+use LocalInstagramFeed\Repository\LogRepository;
+use LocalInstagramFeed\Repository\PostRepository;
+use LocalInstagramFeed\Security\SecretStore;
+use LocalInstagramFeed\Sync\InstagramSyncService;
+use LocalInstagramFeed\Sync\SyncLock;
+
+final class AdminPage {
+	public function __construct(private readonly OAuthService $oauth, private readonly TokenService $tokens, private readonly InstagramApiClient $api, private readonly InstagramSyncService $sync, private readonly PostRepository $posts, private readonly LogRepository $logs, private readonly SecretStore $secrets) {}
+
+	public function register(): void {
+		add_action('admin_menu', array($this, 'menu')); add_action('admin_init', array($this, 'settings')); add_action('admin_init', array($this, 'callback'));
+		add_action('admin_notices', array($this, 'notice'));
+		add_action('admin_post_lif_connect', array($this, 'connect')); add_action('admin_post_lif_disconnect', array($this, 'disconnect')); add_action('admin_post_lif_refresh_token', array($this, 'refresh')); add_action('admin_post_lif_check_connection', array($this, 'check')); add_action('admin_post_lif_delete_all_posts', array($this, 'deleteAllPosts'));
+		add_action('wp_ajax_lif_sync', array($this, 'ajaxSync')); add_action('wp_ajax_lif_sync_progress', array($this, 'ajaxProgress')); add_action('wp_ajax_lif_clear_cache', array($this, 'ajaxClearCache'));
+		add_action('admin_enqueue_scripts', array($this, 'assets'));
+		add_action('update_option_' . Config::OPTION, array($this, 'settingsUpdated'), 10, 2);
+	}
+
+	/** @param mixed $oldValue @param mixed $newValue */
+	public function settingsUpdated(mixed $oldValue, mixed $newValue): void {
+		$old = is_array($oldValue) ? $oldValue : array(); $new = is_array($newValue) ? $newValue : array();
+		$displayKeys = array('post_limit','caption_length','columns','columns_tablet','columns_mobile','aspect_ratio','show_link','new_tab','show_reels','show_carousels','mirror_videos','video_autoplay','show_caption','show_date','show_username','show_metrics','local_detail');
+		foreach ($displayKeys as $key) {
+			if (($old[$key] ?? null) !== ($new[$key] ?? null)) { update_option(Config::REFRESH_GENERATION_OPTION, (int) get_option(Config::REFRESH_GENERATION_OPTION, 0) + 1, false); break; }
+		}
+		FeedRenderer::clearCache(); CronManager::reschedule();
+	}
+
+	public function menu(): void {
+		add_menu_page(__('Local Instagram Feed', 'local-instagram-feed'), __('Local Instagram Feed', 'local-instagram-feed'), 'manage_options', 'local-instagram-feed', array($this, 'render'), 'dashicons-instagram', 81);
+		add_submenu_page('local-instagram-feed', __('Local Instagram Feed settings', 'local-instagram-feed'), __('Settings', 'local-instagram-feed'), 'manage_options', 'local-instagram-feed', array($this, 'render'));
+		add_submenu_page('local-instagram-feed', __('Synced Instagram posts', 'local-instagram-feed'), __('Synced posts', 'local-instagram-feed'), 'manage_options', 'edit.php?post_type=' . Config::POST_TYPE);
+	}
+
+	public function settings(): void {
+		register_setting('lif_settings_group', Config::OPTION, array('type'=>'array','sanitize_callback'=>array($this,'sanitizeSettings'),'default'=>Config::defaults()));
+	}
+
+	/** @param mixed $input @return array<string,mixed> */
+	public function sanitizeSettings(mixed $input): array {
+		$old = Config::settings(); $in = is_array($input) ? $input : array(); $out = Config::defaults();
+		$out['app_id'] = defined('LIF_INSTAGRAM_APP_ID') ? '' : preg_replace('/\D+/', '', (string) ($in['app_id'] ?? ''));
+		if (! defined('LIF_INSTAGRAM_APP_SECRET') && ! empty($in['app_secret'])) { if (! $this->secrets->store('app_secret', (string) $in['app_secret'])) { add_settings_error(Config::OPTION, 'secret', __('The App Secret could not be encrypted. Define it in wp-config.php.', 'local-instagram-feed')); } }
+		$out['app_secret'] = '';
+		$redirect = (string) preg_replace('/[?#].*$/', '', esc_url_raw((string) ($in['redirect_uri'] ?? ''))); $out['redirect_uri'] = $this->validRedirect($redirect) ? $redirect : '';
+		$out['api_version'] = preg_match('/^v\d+\.\d+$/', (string) ($in['api_version'] ?? '')) ? (string) $in['api_version'] : Config::DEFAULT_API_VERSION;
+		$out['post_limit']=max(1,min(100,(int)($in['post_limit']??12))); $out['caption_length']=max(0,min(5000,(int)($in['caption_length']??300)));
+		$out['sync_interval']=in_array((string)($in['sync_interval']??''),array('lif_15_minutes','lif_30_minutes','hourly','lif_two_hours','lif_six_hours','daily'),true)?(string)$in['sync_interval']:'lif_two_hours';
+		$out['deleted_behavior']=in_array((string)($in['deleted_behavior']??''),array('keep','inactive','trash','delete'),true)?(string)$in['deleted_behavior']:'inactive';
+		$out['excess_retention_days']=in_array((int)($in['excess_retention_days']??30),array(-1,0,7,30,90,180,365),true)?(int)$in['excess_retention_days']:30;
+		foreach (array('show_link','new_tab','show_reels','show_carousels','mirror_videos','video_autoplay','show_caption','show_date','show_username','show_metrics','local_detail','debug','delete_on_uninstall') as $key) { $out[$key] = ! empty($in[$key]); }
+		$out['columns']=max(1,min(6,(int)($in['columns']??3))); $out['columns_tablet']=max(1,min(6,(int)($in['columns_tablet']??2))); $out['columns_mobile']=max(1,min(4,(int)($in['columns_mobile']??1)));
+		$out['aspect_ratio']=in_array((string)($in['aspect_ratio']??''),array('9/16','1/1','4/5','16/9','auto'),true)?(string)$in['aspect_ratio']:'9/16';
+		$out['image_max_mb']=max(1,min(100,(int)($in['image_max_mb']??15))); $out['video_max_mb']=max(1,min(1000,(int)($in['video_max_mb']??100))); $out['max_api_pages']=max(1,min(50,(int)($in['max_api_pages']??10))); $out['cache_ttl']=max(60,min(DAY_IN_SECONDS,(int)($in['cache_ttl']??7200))); $out['log_limit']=max(10,min(5000,(int)($in['log_limit']??500)));
+		return $out;
+	}
+
+	public function render(): void {
+		if (! current_user_can('manage_options')) { return; } $tab = sanitize_key(Request::query('tab') ?: 'connection');
+		echo '<div class="wrap lif-admin"><h1>' . esc_html__('Local Instagram Feed', 'local-instagram-feed') . '</h1><nav class="nav-tab-wrapper">';
+		$tabs=array('connection'=>__('Connection','local-instagram-feed'),'sync'=>__('Synchronization','local-instagram-feed'),'display'=>__('Display','local-instagram-feed'),'privacy'=>__('Privacy','local-instagram-feed'),'diagnostics'=>__('Diagnostics','local-instagram-feed'),'logs'=>__('Logs','local-instagram-feed'));
+		foreach($tabs as $key=>$label){echo '<a class="nav-tab '.($tab===$key?'nav-tab-active':'').'" href="'.esc_url(admin_url('admin.php?page=local-instagram-feed&tab='.$key)).'">'.esc_html($label).'</a>';}
+		echo '</nav>'; settings_errors(Config::OPTION);
+		if ('connection'===$tab) { $this->connection(); } elseif ('sync'===$tab) { $this->syncTab(); } elseif ('display'===$tab) { $this->settingsForm(); } elseif ('privacy'===$tab) { $this->privacy(); } elseif ('diagnostics'===$tab) { $this->diagnostics(); } else { $this->logs(); }
+		echo '</div>';
+	}
+
+	private function connection(): void {
+		$meta=(array)get_option(Config::TOKEN_OPTION,array()); echo '<div class="lif-card"><h2>'.esc_html__('Connection status','local-instagram-feed').'</h2><p><strong>'.($this->tokens->isConnected()?esc_html__('Connected','local-instagram-feed'):esc_html__('Not connected','local-instagram-feed')).'</strong></p>';
+		if($this->tokens->isConnected()){echo '<p>'.esc_html__('Account ID:','local-instagram-feed').' '.esc_html($this->mask($this->tokens->userId())).'<br>'.esc_html__('Token expires:','local-instagram-feed').' '.esc_html(wp_date('Y-m-d H:i',(int)$this->tokens->expiresAt())).'</p>';}
+		echo '<p>'.esc_html__('Redirect URI:','local-instagram-feed').' <code>'.esc_html(Config::redirectUri()).'</code></p><div class="lif-actions">';
+		if(!$this->tokens->isConnected()){echo $this->actionButton('lif_connect',__('Connect with Instagram','local-instagram-feed'),'primary');}else{echo $this->actionButton('lif_check_connection',__('Check connection','local-instagram-feed')).$this->actionButton('lif_refresh_token',__('Refresh token','local-instagram-feed')).$this->actionButton('lif_disconnect',__('Disconnect','local-instagram-feed'));} echo '</div></div>'; $this->credentialsForm();
+	}
+
+	private function credentialsForm(): void {
+		$s=Config::settings(); echo '<form method="post" action="options.php" class="lif-card"><h2>'.esc_html__('Meta app credentials','local-instagram-feed').'</h2>'; settings_fields('lif_settings_group');
+		echo '<table class="form-table"><tr><th><label for="lif-app-id">'.esc_html__('Meta App ID','local-instagram-feed').'</label></th><td><input id="lif-app-id" name="'.esc_attr(Config::OPTION).'[app_id]" value="'.esc_attr(defined('LIF_INSTAGRAM_APP_ID')?'':$s['app_id']).'" class="regular-text" '.(defined('LIF_INSTAGRAM_APP_ID')?'disabled':'').'></td></tr>';
+		echo '<tr><th><label for="lif-secret">'.esc_html__('Meta App Secret','local-instagram-feed').'</label></th><td><input id="lif-secret" type="password" autocomplete="new-password" name="'.esc_attr(Config::OPTION).'[app_secret]" value="" class="regular-text" '.(defined('LIF_INSTAGRAM_APP_SECRET')?'disabled':'').'><p class="description">'.esc_html__('Stored encrypted; leave blank to keep the current value. wp-config.php constants take precedence.','local-instagram-feed').'</p></td></tr>';
+		echo '<tr><th><label for="lif-redirect">'.esc_html__('Redirect URI','local-instagram-feed').'</label></th><td><input id="lif-redirect" name="'.esc_attr(Config::OPTION).'[redirect_uri]" value="'.esc_attr(Config::redirectUri()).'" class="large-text"><p class="description">'.esc_html__('Enter this URI in Meta exactly as displayed. OAuth callback URIs must not contain query parameters.','local-instagram-feed').'</p></td></tr><tr><th><label for="lif-version">'.esc_html__('API version','local-instagram-feed').'</label></th><td><input id="lif-version" name="'.esc_attr(Config::OPTION).'[api_version]" value="'.esc_attr($s['api_version']).'"></td></tr></table>';
+		foreach(Config::settings() as $key=>$value){if(!in_array($key,array('app_id','app_secret','redirect_uri','api_version'),true)){echo '<input type="hidden" name="'.esc_attr(Config::OPTION).'['.esc_attr($key).']" value="'.esc_attr(is_bool($value)?($value?'1':'0'):$value).'">';}}
+		submit_button(); echo '</form>';
+	}
+
+	private function syncTab(): void { $status=(array)get_option(Config::STATUS_OPTION,array()); $pending=(int)get_option(Config::REFRESH_GENERATION_OPTION,0)>(int)get_option(Config::APPLIED_REFRESH_GENERATION_OPTION,0); echo '<div class="lif-card"><h2>'.esc_html__('Synchronization','local-instagram-feed').'</h2><p>'.esc_html__('Last successful run:','local-instagram-feed').' '.esc_html(!empty($status['last_success'])?wp_date('Y-m-d H:i:s',(int)$status['last_success']):__('Never','local-instagram-feed')).'<br>'.esc_html__('Next scheduled run:','local-instagram-feed').' '.esc_html(($next=CronManager::nextScheduled())?wp_date('Y-m-d H:i:s',$next):__('Not scheduled','local-instagram-feed')).'<br>'.esc_html__('Local records:','local-instagram-feed').' '.(int)$this->posts->count().'<br>'.esc_html__('Full refresh pending:','local-instagram-feed').' '.esc_html($pending?__('Yes','local-instagram-feed'):__('No','local-instagram-feed')).'</p><button class="button button-primary" id="lif-sync-now">'.esc_html__('Synchronize now','local-instagram-feed').'</button><div id="lif-sync-progress" class="lif-progress" hidden><span></span></div><pre id="lif-sync-result"></pre></div>'; }
+
+	private function settingsForm(): void { $s=Config::settings(); echo '<form method="post" action="options.php" class="lif-card"><h2>'.esc_html__('Display and operation','local-instagram-feed').'</h2>'; settings_fields('lif_settings_group'); echo '<input type="hidden" name="'.esc_attr(Config::OPTION).'[app_id]" value="'.esc_attr($s['app_id']).'"><input type="hidden" name="'.esc_attr(Config::OPTION).'[redirect_uri]" value="'.esc_attr($s['redirect_uri']).'"><input type="hidden" name="'.esc_attr(Config::OPTION).'[api_version]" value="'.esc_attr($s['api_version']).'">';
+		$numbers=array('post_limit'=>__('Posts to synchronize','local-instagram-feed'),'caption_length'=>__('Maximum caption length','local-instagram-feed'),'columns'=>__('Desktop columns','local-instagram-feed'),'columns_tablet'=>__('Tablet columns','local-instagram-feed'),'columns_mobile'=>__('Mobile columns','local-instagram-feed'),'image_max_mb'=>__('Image limit (MB)','local-instagram-feed'),'video_max_mb'=>__('Video limit (MB)','local-instagram-feed'),'max_api_pages'=>__('Maximum API pages','local-instagram-feed'),'log_limit'=>__('Maximum log entries','local-instagram-feed')); echo '<table class="form-table">'; foreach($numbers as $key=>$label){echo '<tr><th><label for="lif-'.$key.'">'.esc_html($label).'</label></th><td><input type="number" id="lif-'.$key.'" name="'.esc_attr(Config::OPTION).'['.$key.']" value="'.(int)$s[$key].'"></td></tr>';}
+		echo '<tr><th>'.esc_html__('Synchronization interval','local-instagram-feed').'</th><td>'.$this->select('sync_interval',$s['sync_interval'],array('lif_15_minutes'=>__('15 minutes','local-instagram-feed'),'lif_30_minutes'=>__('30 minutes','local-instagram-feed'),'hourly'=>__('Hourly','local-instagram-feed'),'lif_two_hours'=>__('2 hours','local-instagram-feed'),'lif_six_hours'=>__('6 hours','local-instagram-feed'),'daily'=>__('Daily','local-instagram-feed'))).'</td></tr><tr><th>'.esc_html__('Delete posts exceeding the limit','local-instagram-feed').'</th><td>'.$this->select('excess_retention_days',$s['excess_retention_days'],array('-1'=>__('Keep indefinitely','local-instagram-feed'),'0'=>__('Immediately after a successful synchronization','local-instagram-feed'),'7'=>__('After 7 days','local-instagram-feed'),'30'=>__('After 30 days','local-instagram-feed'),'90'=>__('After 90 days','local-instagram-feed'),'180'=>__('After 180 days','local-instagram-feed'),'365'=>__('After 365 days','local-instagram-feed'))).'<p class="description">'.esc_html__('The newest configured number of posts is retained. The period starts when an older post first falls outside that limit. Deletion only runs after a complete, error-free synchronization.','local-instagram-feed').'</p></td></tr><tr><th>'.esc_html__('Removed posts','local-instagram-feed').'</th><td>'.$this->select('deleted_behavior',$s['deleted_behavior'],array('keep'=>__('Keep','local-instagram-feed'),'inactive'=>__('Mark inactive','local-instagram-feed'),'trash'=>__('Move to trash','local-instagram-feed'),'delete'=>__('Delete permanently','local-instagram-feed'))).'</td></tr><tr><th>'.esc_html__('Aspect ratio','local-instagram-feed').'</th><td>'.$this->select('aspect_ratio',$s['aspect_ratio'],array('9/16'=>'9:16 '.__('(Reel format)','local-instagram-feed'),'1/1'=>'1:1','4/5'=>'4:5','16/9'=>'16:9','auto'=>__('Auto','local-instagram-feed'))).'</td></tr>';
+		$checks=array('show_caption'=>__('Show captions','local-instagram-feed'),'show_date'=>__('Show dates','local-instagram-feed'),'show_username'=>__('Show username','local-instagram-feed'),'show_metrics'=>__('Show likes and comment counts','local-instagram-feed'),'show_link'=>__('Enable external Instagram links','local-instagram-feed'),'new_tab'=>__('Open external links in a new tab','local-instagram-feed'),'show_reels'=>__('Synchronize Reels','local-instagram-feed'),'show_carousels'=>__('Synchronize carousels','local-instagram-feed'),'mirror_videos'=>__('Mirror videos locally','local-instagram-feed'),'video_autoplay'=>__('Play local videos on hover','local-instagram-feed'),'local_detail'=>__('Enable local detail pages','local-instagram-feed'),'debug'=>__('Enable debug logs','local-instagram-feed'),'delete_on_uninstall'=>__('Delete all plugin data on uninstall','local-instagram-feed')); foreach($checks as $key=>$label){echo '<tr><th>'.esc_html($label).'</th><td><label><input type="checkbox" name="'.esc_attr(Config::OPTION).'['.$key.']" value="1" '.checked(!empty($s[$key]),true,false).'> '.esc_html__('Enabled','local-instagram-feed').'</label></td></tr>';}
+		echo '</table>'; submit_button(); echo '</form>'; }
+
+	private function privacy(): void {
+		echo '<div class="lif-card"><h2>'.esc_html__('Privacy by design','local-instagram-feed').'</h2><ul><li>✓ '.esc_html__('External Meta scripts: no','local-instagram-feed').'</li><li>✓ '.esc_html__('Instagram iframes: no','local-instagram-feed').'</li><li>✓ '.esc_html__('Meta CDN images in the frontend: no','local-instagram-feed').'</li><li>✓ '.esc_html__('Browser API calls: no','local-instagram-feed').'</li><li>✓ '.esc_html__('Local media: yes','local-instagram-feed').'</li><li>'.esc_html__('External Instagram links:','local-instagram-feed').' '.(!empty(Config::settings()['show_link'])?esc_html__('enabled','local-instagram-feed'):esc_html__('disabled','local-instagram-feed')).'</li></ul><p>'.esc_html__('Add an appropriate description to your privacy policy. This technical information is not legal advice.','local-instagram-feed').'</p></div>';
+		echo '<div class="lif-card lif-danger"><h2>'.esc_html__('Delete all synchronized posts','local-instagram-feed').'</h2><p>'.esc_html__('Permanently deletes all locally synchronized Instagram posts, plugin mappings and unreferenced media created by this plugin. The Instagram connection and display settings are retained, so a new synchronization can start immediately.','local-instagram-feed').'</p><p><strong>'.esc_html(sprintf(__('Current local records: %d','local-instagram-feed'),$this->posts->count())).'</strong></p><form method="post" action="'.esc_url(admin_url('admin-post.php')).'"><input type="hidden" name="action" value="lif_delete_all_posts">'; wp_nonce_field('lif_delete_all_posts'); echo '<p><label><input type="checkbox" name="confirm_delete" value="1" required> '.esc_html__('I understand that the synchronized data will be permanently deleted.','local-instagram-feed').'</label></p><p><button type="submit" class="button lif-delete-button">'.esc_html__('Delete all synchronized posts','local-instagram-feed').'</button></p></form></div>';
+	}
+
+	private function diagnostics(): void { global $wpdb; $upload=wp_upload_dir(); $next=CronManager::nextScheduled(); $mediaTable=$wpdb->prefix.'lif_instagram_media'; $report=array('WordPress'=>get_bloginfo('version'),'PHP'=>PHP_VERSION,'cURL'=>extension_loaded('curl')?'yes':'no','Sodium'=>extension_loaded('sodium')?'yes':'no','OpenSSL'=>extension_loaded('openssl')?'yes':'no','Uploads writable'=>wp_is_writable($upload['basedir'])?'yes':'no','DISABLE_WP_CRON'=>defined('DISABLE_WP_CRON')&&DISABLE_WP_CRON?'yes':'no','Next cron'=>$next?gmdate(DATE_ATOM,$next):'none','Connected'=>$this->tokens->isConnected()?'yes':'no','Local records'=>(string)$this->posts->count(),'Orphan attachments'=>(string)$wpdb->get_var("SELECT COUNT(*) FROM {$mediaTable} m LEFT JOIN {$wpdb->posts} p ON p.ID=m.attachment_id WHERE m.attachment_id>0 AND p.ID IS NULL")); echo '<div class="lif-card"><h2>'.esc_html__('Diagnostics','local-instagram-feed').'</h2><textarea class="large-text code" rows="14" readonly>'.esc_textarea(implode("\n",array_map(static fn($k,$v)=>$k.': '.$v,array_keys($report),$report))).'</textarea><p><button id="lif-clear-cache" class="button">'.esc_html__('Clear cache','local-instagram-feed').'</button></p></div>'; }
+
+	private function logs(): void { echo '<div class="lif-card"><h2>'.esc_html__('Recent logs','local-instagram-feed').'</h2><table class="widefat striped"><thead><tr><th>'.esc_html__('Time','local-instagram-feed').'</th><th>'.esc_html__('Level','local-instagram-feed').'</th><th>'.esc_html__('Message','local-instagram-feed').'</th></tr></thead><tbody>'; foreach($this->logs->latest(100) as $row){echo '<tr><td>'.esc_html($row->created_at).'</td><td>'.esc_html($row->level).'</td><td>'.esc_html($row->message).'</td></tr>';} echo '</tbody></table></div>'; }
+
+	public function connect(): void { $this->guard('lif_connect'); try{$url=$this->oauth->authorizationUrl(get_current_user_id());if('www.instagram.com'!==strtolower((string)wp_parse_url($url,PHP_URL_HOST))){throw new \RuntimeException(__('Invalid authorization host.','local-instagram-feed'));}wp_redirect($url,302,'Local Instagram Feed');exit;}catch(\Throwable $e){$this->redirectNotice($e->getMessage(),'error');} }
+	public function disconnect(): void { $this->guard('lif_disconnect'); $this->tokens->disconnect(); $this->redirectNotice(__('Instagram account disconnected.','local-instagram-feed')); }
+	public function refresh(): void { $this->guard('lif_refresh_token'); $ok=$this->tokens->refresh(true); $this->redirectNotice($ok?__('Token refreshed.','local-instagram-feed'):__('Token refresh failed.','local-instagram-feed'),$ok?'success':'error'); }
+	public function check(): void { $this->guard('lif_check_connection'); try{$profile=$this->api->profile();$meta=(array)get_option(Config::TOKEN_OPTION,array());$meta['username']=sanitize_text_field((string)($profile['username']??''));update_option(Config::TOKEN_OPTION,$meta,false);$this->redirectNotice(__('Connection is working.','local-instagram-feed'));}catch(\Throwable $e){$this->redirectNotice($e->getMessage(),'error');} }
+	public function deleteAllPosts(): void {
+		$this->guard('lif_delete_all_posts');
+		if ('1' !== Request::post('confirm_delete')) { $this->redirectNotice(__('Deletion was not confirmed.','local-instagram-feed'),'error','privacy'); }
+		$lock = new SyncLock();
+		if (! $lock->acquire()) { $this->redirectNotice(__('The data cannot be deleted while a synchronization is running.','local-instagram-feed'),'error','privacy'); }
+		$type = 'success'; $message = '';
+		try {
+			$result = $this->posts->deleteAll(); delete_option(Config::STATUS_OPTION); delete_transient('lif_sync_progress');
+			update_option(Config::APPLIED_REFRESH_GENERATION_OPTION,(int)get_option(Config::REFRESH_GENERATION_OPTION,0),false); FeedRenderer::clearCache();
+			$this->logs->add('info','All synchronized Instagram data deleted.',$result);
+			$message = sprintf(__('Deleted %1$d posts and %2$d plugin-owned media files. %3$d referenced media files were retained.','local-instagram-feed'),$result['posts'],$result['attachments'],$result['retained_attachments']);
+		} catch (\Throwable $e) { $message = $e->getMessage(); $type = 'error'; }
+		finally { $lock->release(); }
+		$this->redirectNotice($message,$type,'privacy');
+	}
+	public function callback(): void {
+		$userId = get_current_user_id();
+		$explicitRoute = 'oauth_callback' === sanitize_key(Request::query('lif_action')) && 'local-instagram-feed' === sanitize_key(Request::query('page'));
+		$instagramFallback = isset($GLOBALS['pagenow']) && 'admin.php' === $GLOBALS['pagenow'] && '' !== Request::query('state') && ('' !== Request::query('code') || '' !== Request::query('error')) && $userId > 0 && $this->oauth->hasPendingState($userId);
+		if (! $explicitRoute && ! $instagramFallback) { return; }
+		if (! current_user_can('manage_options')) { wp_die(esc_html__('Insufficient permissions.','local-instagram-feed')); }
+		$state = sanitize_text_field(Request::query('state'));
+		$code = sanitize_text_field(Request::query('code'));
+		try {
+			if (! $this->oauth->validateState($userId, $state)) { throw new \RuntimeException(__('OAuth state validation failed.','local-instagram-feed')); }
+			if ('' !== Request::query('error')) {
+				$description = sanitize_text_field(Request::query('error_description'));
+				throw new \RuntimeException($description ?: __('Instagram authorization was cancelled or rejected.','local-instagram-feed'));
+			}
+			if ('' === $code) { throw new \RuntimeException(__('Instagram did not return an authorization code.','local-instagram-feed')); }
+			$this->tokens->acceptShortLived($this->oauth->exchangeCode($code));
+			$this->redirectNotice(__('Instagram account connected.','local-instagram-feed'));
+		} catch (\Throwable $e) { $this->redirectNotice($e->getMessage(),'error'); }
+	}
+	public function ajaxSync(): void { $this->ajaxGuard(); wp_send_json_success($this->sync->sync()->toArray()); }
+	public function ajaxProgress(): void { $this->ajaxGuard(); wp_send_json_success(get_transient('lif_sync_progress')?:array('phase'=>'idle','percent'=>0)); }
+	public function ajaxClearCache(): void { $this->ajaxGuard(); FeedRenderer::clearCache(); wp_send_json_success(array('message'=>__('Cache cleared.','local-instagram-feed'))); }
+	public function assets(string $hook): void { if(false===strpos($hook,'local-instagram-feed')){return;} wp_enqueue_style('lif-admin',LIF_PLUGIN_URL.'assets/css/admin.css',array(),LIF_VERSION);wp_enqueue_script('lif-admin',LIF_PLUGIN_URL.'assets/js/admin.js',array(),LIF_VERSION,true);wp_localize_script('lif-admin','lifAdmin',array('ajaxUrl'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('lif_admin_ajax'),'syncError'=>__('Synchronization failed.','local-instagram-feed'))); }
+	public function notice(): void { $notice=get_transient('lif_admin_notice_'.get_current_user_id());if(!is_array($notice)){return;}delete_transient('lif_admin_notice_'.get_current_user_id());echo '<div class="notice notice-'.esc_attr('error'===$notice['type']?'error':'success').' is-dismissible"><p>'.esc_html((string)$notice['message']).'</p></div>'; }
+	private function actionButton(string $action,string $label,string $class='secondary'): string { $url=wp_nonce_url(admin_url('admin-post.php?action='.$action),$action);return '<a class="button button-'.$class.'" href="'.esc_url($url).'">'.esc_html($label).'</a> '; }
+	private function guard(string $action): void { if(!current_user_can('manage_options')){wp_die(esc_html__('Insufficient permissions.','local-instagram-feed'));}check_admin_referer($action); }
+	private function ajaxGuard(): void { check_ajax_referer('lif_admin_ajax','nonce');if(!current_user_can('manage_options')){wp_send_json_error(array('message'=>__('Insufficient permissions.','local-instagram-feed')),403);} }
+	private function redirectNotice(string $message,string $type='success',string $tab=''): never { set_transient('lif_admin_notice_'.get_current_user_id(),array('message'=>sanitize_text_field($message),'type'=>$type),60);$url=admin_url('admin.php?page=local-instagram-feed');if($tab){$url=add_query_arg('tab',sanitize_key($tab),$url);}wp_safe_redirect($url);exit; }
+	private function mask(string $id): string { return strlen($id)>6?substr($id,0,3).str_repeat('•',max(3,strlen($id)-6)).substr($id,-3):str_repeat('•',strlen($id)); }
+	private function validRedirect(string $url): bool { if(!$url){return true;}$parts=wp_parse_url($url);$home=wp_parse_url(home_url('/'));$local=wp_get_environment_type()==='local'||in_array((string)($parts['host']??''),array('localhost','127.0.0.1','::1'),true);return !empty($parts['host'])&&strtolower((string)$parts['host'])===strtolower((string)($home['host']??''))&&('https'===($parts['scheme']??'')||$local); }
+	/** @param array<string,string> $choices */ private function select(string $key,mixed $current,array $choices): string { $html='<select name="'.esc_attr(Config::OPTION).'['.esc_attr($key).']">';foreach($choices as $value=>$label){$html.='<option value="'.esc_attr($value).'" '.selected((string)$current,$value,false).'>'.esc_html($label).'</option>';}return $html.'</select>'; }
+}
