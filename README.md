@@ -194,7 +194,7 @@ node tests/js/frontend-row-height.test.js
 Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus einem markierten Commit erstellen:
 
 ```bash
-git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-1.0.29.zip HEAD
+git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-1.0.30.zip HEAD
 ```
 
 ## Fehlerbehebung
@@ -211,6 +211,8 @@ git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-
 
 Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen des Plugins bleiben Daten standardmäßig erhalten. Nur wenn zuvor „Alle Plugin-Daten bei Deinstallation löschen“ aktiviert wurde, entfernt `uninstall.php` Plugin-Beiträge, plugin-eigene Attachments, Tabellen, Optionen, Secrets, Transients und Zeitpläne endgültig.
 
+Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt ausschließlich plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
+
 ## Grenzen
 
 - Genau ein professionelles Instagram-Konto pro WordPress-Installation
@@ -220,6 +222,12 @@ Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen de
 - Die Nutzung entbindet den Betreiber nicht von der Prüfung von Bildrechten, Einwilligungen, Löschpflichten und Datenschutzerklärung
 
 ## Changelog
+
+### 1.0.30
+
+- Der Datenschutz-Tab zeigt Anzahl und maximalen Speicherbedarf nicht mehr zugeordneter plugin-eigener Attachments und bietet eine bestätigungspflichtige Bereinigung an.
+- Aktuell zugeordnete Medien werden nie berücksichtigt. Anderweitig in WordPress verwendete Dateien bleiben erhalten und verlieren lediglich ihre Plugin-Eigentumsmarkierung.
+- Der Ergebnisbericht nennt gelöschte, beibehaltene und fehlgeschlagene Dateien sowie den tatsächlich freigegebenen Speicherplatz.
 
 ### 1.0.29
 

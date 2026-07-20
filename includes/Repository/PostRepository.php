@@ -111,6 +111,56 @@ final class PostRepository {
 		return $result;
 	}
 
+	/** @return array{candidates:int,bytes:int} */
+	public function orphanedOwnedMediaSummary(): array {
+		$candidates = $this->orphanedOwnedAttachmentIds();
+		$bytes = 0;
+		foreach ($candidates as $attachmentId) { $bytes += $this->attachmentDiskUsage($attachmentId); }
+		return array('candidates' => count($candidates), 'bytes' => $bytes);
+	}
+
+	/** @return array{candidates:int,deleted:int,retained:int,failed:int,bytes:int} */
+	public function cleanupOrphanedOwnedMedia(): array {
+		$candidates = $this->orphanedOwnedAttachmentIds();
+		$pluginPostIds = get_posts(array('post_type'=>Config::POST_TYPE,'post_status'=>array('publish','draft','trash'),'posts_per_page'=>-1,'fields'=>'ids','suppress_filters'=>true));
+		$pluginPostIds = array_values(array_unique(array_map('intval', $pluginPostIds)));
+		$result = array('candidates'=>count($candidates),'deleted'=>0,'retained'=>0,'failed'=>0,'bytes'=>0);
+		foreach ($candidates as $attachmentId) {
+			if ($this->attachmentReferencedOutside($attachmentId, $pluginPostIds)) {
+				delete_post_meta($attachmentId, '_lif_owned'); delete_post_meta($attachmentId, '_lif_media_id'); delete_post_meta($attachmentId, '_lif_source_host');
+				++$result['retained']; continue;
+			}
+			$bytes = $this->attachmentDiskUsage($attachmentId);
+			if (wp_delete_attachment($attachmentId, true)) { ++$result['deleted']; $result['bytes'] += $bytes; }
+			else { ++$result['failed']; }
+		}
+		return $result;
+	}
+
+	/** @return array<int,int> */
+	private function orphanedOwnedAttachmentIds(): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'lif_instagram_media';
+		$owned = get_posts(array('post_type'=>'attachment','post_status'=>'inherit','posts_per_page'=>-1,'fields'=>'ids','meta_key'=>'_lif_owned','meta_value'=>'1','suppress_filters'=>true));
+		if ($owned) { update_meta_cache('post', array_map('intval', $owned)); }
+		$referenced = $wpdb->get_col("SELECT attachment_id FROM {$table} WHERE attachment_id > 0 UNION SELECT video_attachment_id FROM {$table} WHERE video_attachment_id > 0");
+		return array_values(array_diff(array_unique(array_map('intval', $owned)), array_unique(array_map('intval', $referenced))));
+	}
+
+	private function attachmentDiskUsage(int $attachmentId): int {
+		$attachedFile = (string) get_attached_file($attachmentId);
+		if ('' === $attachedFile) { return 0; }
+		$files = array($attachedFile); $directory = dirname($attachedFile); $metadata = wp_get_attachment_metadata($attachmentId);
+		if (is_array($metadata)) {
+			foreach ((array) ($metadata['sizes'] ?? array()) as $size) { if (! empty($size['file'])) { $files[] = $directory . DIRECTORY_SEPARATOR . basename((string) $size['file']); } }
+			if (! empty($metadata['original_image'])) { $files[] = $directory . DIRECTORY_SEPARATOR . basename((string) $metadata['original_image']); }
+		}
+		foreach ((array) get_post_meta($attachmentId, '_wp_attachment_backup_sizes', true) as $size) { if (! empty($size['file'])) { $files[] = $directory . DIRECTORY_SEPARATOR . basename((string) $size['file']); } }
+		$bytes = 0;
+		foreach (array_unique($files) as $file) { if (is_file($file)) { $size = filesize($file); if (false !== $size) { $bytes += $size; } } }
+		return $bytes;
+	}
+
 	/** @return array{posts:int,attachments:int,retained_attachments:int} */
 	public function deleteAll(): array {
 		global $wpdb;
@@ -160,9 +210,18 @@ final class PostRepository {
 		$references = get_posts(array('post_type'=>'any','post_status'=>'any','posts_per_page'=>1,'fields'=>'ids','post__not_in'=>$pluginPostIds,'meta_key'=>'_thumbnail_id','meta_value'=>(string)$attachmentId));
 		if ($references) { return true; }
 		$url = wp_get_attachment_url($attachmentId);
-		if (! is_string($url) || '' === $url) { return false; }
 		global $wpdb;
 		$where = $pluginPostIds ? ' AND ID NOT IN (' . implode(',', array_map('intval', $pluginPostIds)) . ')' : '';
-		return (bool) $wpdb->get_var($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE post_content LIKE %s{$where} LIMIT 1", '%' . $wpdb->esc_like($url) . '%'));
+		$idMarker = '%wp-image-' . $attachmentId . '%';
+		$serializedId = '%i:' . $attachmentId . ';%';
+		$jsonId = '%"attachment_id":' . $attachmentId . '%';
+		$mediaKeyPattern = '(attachment|image|media|gallery|logo|icon|background|header|thumbnail)';
+		$urlPattern = is_string($url) && '' !== $url ? '%' . $wpdb->esc_like($url) . '%' : '__lif_no_url__';
+		if (is_string($url) && '' !== $url && $wpdb->get_var($wpdb->prepare("SELECT ID FROM {$wpdb->posts} WHERE (post_content LIKE %s OR post_content LIKE %s){$where} LIMIT 1", '%' . $wpdb->esc_like($url) . '%', $idMarker))) { return true; }
+		if ($wpdb->get_var($wpdb->prepare("SELECT post_id FROM {$wpdb->postmeta} WHERE post_id <> %d AND meta_key NOT IN ('_wp_attachment_metadata','_wp_attachment_backup_sizes','_wp_attached_file') AND (meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s)) LIMIT 1", $attachmentId, (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId))) { return true; }
+		if ((int) get_option('site_icon') === $attachmentId || (int) get_theme_mod('custom_logo') === $attachmentId) { return true; }
+		if ($wpdb->get_var($wpdb->prepare("SELECT option_id FROM {$wpdb->options} WHERE option_name NOT LIKE %s AND option_name NOT LIKE %s AND (option_value LIKE %s OR option_value LIKE %s OR (option_name REGEXP %s AND (option_value = %s OR option_value LIKE %s))) LIMIT 1", $wpdb->esc_like('_transient_') . '%', $wpdb->esc_like('_site_transient_') . '%', $urlPattern, $jsonId, $mediaKeyPattern, (string) $attachmentId, $serializedId))) { return true; }
+		if ($wpdb->get_var($wpdb->prepare("SELECT meta_id FROM {$wpdb->termmeta} WHERE meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s) LIMIT 1", (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId))) { return true; }
+		return (bool) $wpdb->get_var($wpdb->prepare("SELECT umeta_id FROM {$wpdb->usermeta} WHERE meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s) LIMIT 1", (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId));
 	}
 }

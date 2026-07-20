@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.0.29
+Stable tag: 1.0.30
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
@@ -26,6 +26,10 @@ See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and b
 5. Run the first synchronization and add the block or shortcode.
 
 == Changelog ==
+
+= 1.0.30 =
+* Fuegt eine bestaetigungspflichtige Bereinigung fuer nicht mehr zugeordnete plugin-eigene Medien hinzu.
+* Schuetzt aktuell zugeordnete und anderweitig in WordPress verwendete Dateien und meldet den freigegebenen Speicherplatz.
 
 = 1.0.29 =
 * Uebernimmt fuer den Feed-Block den responsiven vertikalen Sektionsabstand des Sunflower-Aktuelles-Blocks.

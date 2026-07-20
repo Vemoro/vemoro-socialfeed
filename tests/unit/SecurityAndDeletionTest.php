@@ -31,6 +31,22 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$this->assertNull(get_post($pluginPost));$this->assertNull(get_post($deletable));$this->assertNotNull(get_post($retained));$this->assertSame('',get_post_meta($retained,'_lif_owned',true));
 		wp_delete_post($normalPost,true);wp_delete_attachment($retained,true);
 	}
+	public function test_orphan_cleanup_excludes_mapped_media_and_retains_external_references(): void {
+		global $wpdb;
+		$pluginPost=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish'));
+		$mapped=wp_insert_attachment(array('post_title'=>'Mapped media','post_status'=>'inherit','post_mime_type'=>'image/jpeg','post_parent'=>$pluginPost));update_post_meta($mapped,'_lif_owned','1');
+		$orphan=wp_insert_attachment(array('post_title'=>'Orphan media','post_status'=>'inherit','post_mime_type'=>'image/jpeg','post_parent'=>$pluginPost));update_post_meta($orphan,'_lif_owned','1');
+		$dimensionCollision=wp_insert_attachment(array('post_title'=>'Dimension collision','post_status'=>'inherit','post_mime_type'=>'image/jpeg','post_parent'=>$pluginPost));update_post_meta($dimensionCollision,'_lif_owned','1');
+		$shared=wp_insert_attachment(array('post_title'=>'Shared orphan media','post_status'=>'inherit','post_mime_type'=>'image/jpeg','post_parent'=>$pluginPost));update_post_meta($shared,'_lif_owned','1');
+		$unrelatedAttachment=wp_insert_attachment(array('post_title'=>'Unrelated media','post_status'=>'inherit','post_mime_type'=>'image/jpeg'));update_post_meta($unrelatedAttachment,'_wp_attachment_metadata',array('width'=>$dimensionCollision,'height'=>1024));
+		$wpdb->insert($wpdb->prefix.'lif_instagram_media',array('media_id'=>'mapped-test','post_id'=>$pluginPost,'attachment_id'=>$mapped,'updated_at'=>current_time('mysql',true)),array('%s','%d','%d','%s'));
+		$normalPost=self::factory()->post->create(array('post_status'=>'publish'));update_post_meta($normalPost,'_thumbnail_id',$shared);
+		$repo=new PostRepository();$summary=$repo->orphanedOwnedMediaSummary();$this->assertSame(3,$summary['candidates']);
+		$result=$repo->cleanupOrphanedOwnedMedia();
+		$this->assertSame(3,$result['candidates']);$this->assertSame(2,$result['deleted']);$this->assertSame(1,$result['retained']);$this->assertSame(0,$result['failed']);
+		$this->assertNotNull(get_post($mapped));$this->assertNull(get_post($orphan));$this->assertNull(get_post($dimensionCollision));$this->assertNotNull(get_post($shared));$this->assertSame('',get_post_meta($shared,'_lif_owned',true));
+		$wpdb->delete($wpdb->prefix.'lif_instagram_media',array('media_id'=>'mapped-test'),array('%s'));wp_delete_post($normalPost,true);wp_delete_attachment($unrelatedAttachment,true);wp_delete_attachment($shared,true);wp_delete_attachment($mapped,true);wp_delete_post($pluginPost,true);
+	}
 	public function test_excess_post_is_only_pruned_after_retention_period(): void {
 		$new=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','post_date'=>'2026-02-01 12:00:00'));$old=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','post_date'=>'2026-01-01 12:00:00'));
 		foreach(array($new,$old) as $postId){update_post_meta($postId,'_lif_status','active');update_post_meta($postId,'_lif_display_enabled','1');}
