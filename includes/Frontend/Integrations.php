@@ -6,7 +6,9 @@ use LocalInstagramFeed\Config;
 final class Integrations {
 	public function __construct(private readonly FeedRenderer $renderer) {}
 	public function register(): void {
-		add_shortcode('local_instagram_feed', fn(array $attrs = array()): string => $this->renderer->render(shortcode_atts(array('posts'=>null,'columns'=>null,'columns_tablet'=>null,'columns_mobile'=>null,'show_caption'=>null,'show_date'=>null,'show_username'=>null,'show_metrics'=>null,'show_link'=>null,'caption_length'=>null,'aspect_ratio'=>null,'order'=>null,'class'=>null), $attrs, 'local_instagram_feed')));
+		$renderShortcode = fn(array $attrs = array()): string => $this->renderer->render(shortcode_atts(array('posts'=>null,'columns'=>null,'columns_tablet'=>null,'columns_mobile'=>null,'show_caption'=>null,'show_date'=>null,'show_username'=>null,'show_metrics'=>null,'show_link'=>null,'caption_length'=>null,'aspect_ratio'=>null,'order'=>null,'class'=>null), $attrs, 'vemoro_socialfeed'));
+		add_shortcode('vemoro_socialfeed', $renderShortcode);
+		add_shortcode('local_instagram_feed', $renderShortcode);
 		add_action('init', array($this, 'block'));
 		add_filter('query_vars', static function(array $vars): array { $vars[] = 'lif_detail'; return $vars; });
 		add_action('init', static function(): void { add_rewrite_rule('^instagram-feed/([^/]+)/?$', 'index.php?lif_detail=$matches[1]', 'top'); });
@@ -21,6 +23,7 @@ final class Integrations {
 		wp_add_inline_script('lif-block-editor', 'window.lifBlockPalette = ' . wp_json_encode($this->block_palette()) . ';', 'before');
 		wp_add_inline_script('lif-block-editor', 'window.lifBlockTypography = ' . wp_json_encode($this->block_typography()) . ';', 'before');
 		wp_set_script_translations('lif-block-editor', 'local-instagram-feed', LIF_PLUGIN_DIR . 'languages');
+		register_block_type(LIF_PLUGIN_DIR . 'blocks/vemoro-feed', array('render_callback' => array($this, 'render_block')));
 		register_block_type(LIF_PLUGIN_DIR . 'blocks/feed', array('render_callback' => array($this, 'render_block')));
 	}
 	public function render_block(array $attrs): string {

@@ -1,6 +1,6 @@
 {
-  "name": "local-instagram-feed/local-instagram-feed",
-  "description": "Development dependencies for Local Instagram Feed; runtime has no Composer dependency.",
+  "name": "vemoro/vemoro-socialfeed-for-wp",
+  "description": "Development dependencies for Vemoro SocialFeed for WP; runtime has no Composer dependency.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "require": { "php": ">=8.1" },

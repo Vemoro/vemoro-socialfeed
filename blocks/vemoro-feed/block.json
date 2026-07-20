@@ -1,8 +1,8 @@
 {
   "apiVersion": 3,
-  "name": "local-instagram-feed/feed",
+  "name": "vemoro-socialfeed/feed",
   "version": "2.0.0",
-  "title": "Lokaler Instagram-Feed (Kompatibilität)",
+  "title": "Vemoro SocialFeed",
   "category": "widgets",
   "icon": "instagram",
   "description": "Zeigt lokal synchronisierte Instagram-Beiträge an.",

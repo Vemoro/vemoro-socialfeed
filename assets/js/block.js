@@ -12,7 +12,8 @@
   var defaults = window.lifBlockDefaults || {};
   var palette = window.lifBlockPalette || [];
   var typography = window.lifBlockTypography || { fontSizes: [], fontFamilies: [] };
-  blocks.registerBlockType('local-instagram-feed/feed', {
+  function registerFeedBlock(blockName) {
+  blocks.registerBlockType(blockName, {
     edit: function (props) {
       var a = props.attributes;
       var blockProps = useBlockProps({ className: 'lif-block-editor' });
@@ -67,9 +68,12 @@
             el(RangeControl, { label: i18n.__('Space below heading in pixels', 'local-instagram-feed'), min: 0, max: 120, value: value('heading_spacing'), onChange: set('heading_spacing') })
           )
         ]),
-        el('div', { key: 'preview', className: 'lif-block-editor__preview' }, el(serverSideRender, { block: 'local-instagram-feed/feed', attributes: a }))
+        el('div', { key: 'preview', className: 'lif-block-editor__preview' }, el(serverSideRender, { block: blockName, attributes: a }))
       ]);
     },
     save: function () { return null; }
   });
+  }
+  registerFeedBlock('vemoro-socialfeed/feed');
+  registerFeedBlock('local-instagram-feed/feed');
 }(window.wp.blocks, window.wp.element, window.wp.components, window.wp.blockEditor, window.wp.serverSideRender, window.wp.i18n));

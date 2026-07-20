@@ -1,6 +1,8 @@
-# Local Instagram Feed
+# Vemoro SocialFeed for WP
 
-Local Instagram Feed synchronisiert Beiträge eines eigenen professionellen Instagram-Kontos serverseitig in WordPress. Bilder, Poster, optionale Videos, Captions und Metadaten werden lokal gespeichert. Beim bloßen Anzeigen des Feeds muss der Browser des Besuchers deshalb keine Verbindung zu Instagram oder Meta aufbauen.
+Vemoro SocialFeed for WP synchronisiert Beiträge eines eigenen professionellen Instagram-Kontos serverseitig in WordPress. Bilder, Poster, optionale Videos, Captions und Metadaten werden lokal gespeichert. Beim bloßen Anzeigen des Feeds muss der Browser des Besuchers deshalb keine Verbindung zu Instagram oder Meta aufbauen.
+
+Das Plugin ist die kompatible Weiterentwicklung von „Local Instagram Feed“. Bestehende `lif_*`-Daten, Blöcke, Shortcodes und Integrationen bleiben erhalten.
 
 > Das Plugin ist so konzipiert, dass beim bloßen Anzeigen des lokal gespeicherten Feeds keine Verbindung des Besucher-Browsers zu Instagram oder Meta erforderlich ist. Die rechtliche Zulässigkeit der veröffentlichten Inhalte, insbesondere Bildrechte und personenbezogene Daten, bleibt vom Websitebetreiber zu prüfen.
 
@@ -10,22 +12,23 @@ Local Instagram Feed synchronisiert Beiträge eines eigenen professionellen Inst
 - PHP 8.1 oder neuer mit JSON, Fileinfo und entweder Sodium oder OpenSSL
 - Schreibbares WordPress-Uploadverzeichnis
 - Instagram Business- oder Creator-Konto
-- Meta-App mit „Instagram API with Instagram Login“
-- Öffentlich erreichbare HTTPS-URL für den produktiven OAuth-Callback
+- Für den empfohlenen Vemoro Login: eine öffentlich erreichbare WordPress-Website mit HTTPS
+- Nur für den Expertenmodus: eigene Meta-App mit „Instagram API with Instagram Login“
 
 Das Plugin benötigt weder Composer noch npm zur Laufzeit. Die in `composer.json` aufgeführten Pakete dienen ausschließlich der Entwicklung und den Tests.
 
 ## Installation
 
 1. Den Ordner `local-instagram-feed` nach `wp-content/plugins/` kopieren.
-2. „Local Instagram Feed“ in WordPress aktivieren.
-3. Im neuen Adminmenü zuerst App-ID, App-Secret und gegebenenfalls die Redirect URI speichern.
-4. Die angezeigte Redirect URI exakt in der Meta-App hinterlegen.
-5. „Mit Instagram verbinden“ anklicken und anschließend die erste Synchronisierung starten.
+2. „Vemoro SocialFeed for WP“ in WordPress aktivieren.
+3. Im Adminmenü „Vemoro Login“ auswählen und „Mit Instagram verbinden“ anklicken.
+4. Nach der Rückkehr zu WordPress die erste Synchronisierung starten.
+
+Der Vemoro Login benötigt keine App-ID und kein App-Secret in WordPress. Der zentrale Dienst unter `connect.vemoro.de` besitzt eine feste Meta-Callback-URL und gibt das Long-Lived Token über einen verschlüsselten, kurzlebigen Einmalcode an WordPress zurück. Das dauerhafte Token liegt anschließend ausschließlich verschlüsselt in der WordPress-Installation.
 
 Das vorhandene Smash-Balloon-Plugin wird weder verändert noch migriert und kann parallel installiert bleiben.
 
-## Meta-App und Instagram Login
+## Instagram Login und eigener Meta-App-Expertenmodus
 
 Die Einrichtung in Meta kann sich ändern. Maßgeblich ist immer die aktuelle offizielle Dokumentation zur [Instagram API with Instagram Login](https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/). Für dieses Plugin gilt:
 
@@ -36,7 +39,7 @@ Die Einrichtung in Meta kann sich ändern. Maßgeblich ist immer die aktuelle of
 - Advanced Access und gegebenenfalls App Review sind nötig, wenn die App fremde professionelle Konten bedienen soll
 - Eine verknüpfte Facebook-Seite ist für diese API-Variante nicht erforderlich
 
-Als Redirect URI wird standardmäßig verwendet:
+Wer eine eigene Meta-App betreiben möchte, wählt den Expertenmodus. Als Redirect URI wird dabei standardmäßig verwendet:
 
 ```text
 https://example.org/wp-admin/admin.php
@@ -54,6 +57,12 @@ define('LIF_INSTAGRAM_APP_SECRET', 'replace-with-the-real-secret');
 ```
 
 Konstanten haben Vorrang vor Datenbankwerten. Ohne Konstanten verschlüsselt das Plugin das App Secret und Token mit Sodium `secretbox`, ersatzweise AES-256-GCM. Der Schlüssel wird aus WordPress-Salts abgeleitet. Steht keine sichere Verschlüsselung bereit, verweigert das Plugin die Secret-Speicherung in der Datenbank.
+
+Für einen selbst betriebenen oder lokalen Vemoro-Verbindungsdienst kann dessen Basis-URL gesetzt werden:
+
+```php
+define('VEMORO_SOCIALFEED_CONNECT_URL', 'https://connect.example.org');
+```
 
 ## API-Endpunkte und Token
 
@@ -102,7 +111,7 @@ Likes und Kommentaranzahl werden mit dem normalen Medienabruf synchronisiert und
 
 ### Gutenberg
 
-Im Blockeditor den dynamischen Block „Lokaler Instagram-Feed“ einfügen. Die Vorschau und das Frontend werden serverseitig aus lokalen Daten erzeugt.
+Im Blockeditor den dynamischen Block „Vemoro SocialFeed“ einfügen. Die Vorschau und das Frontend werden serverseitig aus lokalen Daten erzeugt. Der bisherige Block `local-instagram-feed/feed` bleibt für vorhandene Inhalte registriert.
 
 ### Shortcode
 
@@ -114,6 +123,8 @@ Im Blockeditor den dynamischen Block „Lokaler Instagram-Feed“ einfügen. Die
 
 Unterstützt werden `posts`, `columns`, `columns_tablet`, `columns_mobile`, `show_caption`, `show_date`, `show_username`, `show_metrics`, `show_link`, `caption_length`, `aspect_ratio`, `order` und `class`.
 
+Für neue Einbindungen lautet der Shortcode `[vemoro_socialfeed]`. Der alte Shortcode bleibt als Alias erhalten.
+
 ### Theme-Funktion
 
 ```php
@@ -121,6 +132,8 @@ if (function_exists('lif_render_feed')) {
     echo lif_render_feed(array('posts' => 9, 'columns' => 3)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
 ```
+
+Neue Themes können entsprechend `vemoro_socialfeed_render()` verwenden; `lif_render_feed()` bleibt kompatibel.
 
 Die Funktion liefert bereits kontextbezogen escaptes Plugin-Markup.
 
@@ -136,6 +149,8 @@ wp local-instagram-feed status
 wp local-instagram-feed refresh-token
 wp local-instagram-feed clear-cache
 ```
+
+Dieselben Unterbefehle stehen zusätzlich unter `wp vemoro-socialfeed …` bereit.
 
 Beispiel für einen echten Server-Cron:
 
@@ -222,6 +237,14 @@ Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zu
 - Die Nutzung entbindet den Betreiber nicht von der Prüfung von Bildrechten, Einwilligungen, Löschpflichten und Datenschutzerklärung
 
 ## Changelog
+
+### 2.0.0
+
+- Produktname und Administrationsoberfläche auf „Vemoro SocialFeed for WP“ umgestellt.
+- Vemoro Login als Standard hinzugefügt; WordPress benötigt dabei kein Meta-App-Secret.
+- Eigene Meta-App bleibt als Expertenmodus verfügbar und bestehende Konfigurationen werden automatisch beibehalten.
+- Neuer Block `vemoro-socialfeed/feed`, Shortcode `[vemoro_socialfeed]`, Theme-Funktion `vemoro_socialfeed_render()` und CLI-Befehl `wp vemoro-socialfeed` ergänzt.
+- Alle bisherigen `lif_*`-Schnittstellen und gespeicherten Daten bleiben kompatibel.
 
 ### 1.0.30
 

@@ -5,7 +5,7 @@ final class Activation {
 	public static function activate(): void {
 		if (version_compare(PHP_VERSION, '8.1', '<')) {
 			deactivate_plugins(plugin_basename(LIF_PLUGIN_FILE));
-			wp_die(esc_html__('Local Instagram Feed requires PHP 8.1 or newer.', 'local-instagram-feed'));
+			wp_die(esc_html__('Vemoro SocialFeed for WP requires PHP 8.1 or newer.', 'local-instagram-feed'));
 		}
 		$previousDbVersion = (string) get_option(Config::DB_VERSION_OPTION, '');
 		add_option(Config::OPTION, Config::defaults());

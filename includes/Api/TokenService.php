@@ -21,6 +21,13 @@ final class TokenService {
 		$this->logs->add('info', 'Instagram account connected.');
 	}
 
+	/** @param array{access_token:string,user_id:string,expires_in:int} $token */
+	public function acceptLongLived(array $token): void {
+		if (! $this->secrets->store('access_token', $token['access_token'])) { throw new \RuntimeException(__('The access token could not be encrypted.', 'local-instagram-feed')); }
+		update_option(Config::TOKEN_OPTION, array('user_id' => $token['user_id'], 'expires_at' => time() + max(3600, $token['expires_in']), 'refresh_failures' => 0, 'last_refresh' => time(), 'provider' => 'vemoro'), false);
+		$this->logs->add('info', 'Instagram account connected through Vemoro.');
+	}
+
 	public function refresh(bool $force = false): bool {
 		if (! $this->isConnected() || (! $force && ! $this->needsRefresh())) { return true; }
 		$url = 'https://graph.instagram.com/refresh_access_token?' . http_build_query(array('grant_type' => 'ig_refresh_token', 'access_token' => $this->accessToken()), '', '&', PHP_QUERY_RFC3986);

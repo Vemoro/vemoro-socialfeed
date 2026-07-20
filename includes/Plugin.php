@@ -34,7 +34,11 @@ final class Plugin {
 		add_action('lif_refresh_token_retry', fn(): bool => $services['tokens']->refresh(true));
 		add_action('updated_post_meta', array($this, 'attachmentMetaChanged'), 10, 4); add_action('added_post_meta', array($this, 'attachmentMetaChanged'), 10, 4);
 		add_action('save_post_' . Config::POST_TYPE, static function(): void { FeedRenderer::clearCache(); });
-		if (defined('WP_CLI') && WP_CLI) { \WP_CLI::add_command('local-instagram-feed', new Commands($services['sync'], $services['tokens'])); }
+		if (defined('WP_CLI') && WP_CLI) {
+			$commands = new Commands($services['sync'], $services['tokens']);
+			\WP_CLI::add_command('vemoro-socialfeed', $commands);
+			\WP_CLI::add_command('local-instagram-feed', $commands);
+		}
 	}
 
 	public static function registerPostType(): void {

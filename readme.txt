@@ -1,17 +1,17 @@
-=== Local Instagram Feed ===
+=== Vemoro SocialFeed for WP ===
 Contributors: site-owner
 Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 1.0.30
+Stable tag: 2.0.0
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
 
 == Description ==
 
-Local Instagram Feed uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media.
+Vemoro SocialFeed for WP uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
 
 The plugin does not claim that a particular use is legally GDPR compliant. Operators remain responsible for published content, image rights, personal data, and their privacy notice.
 
@@ -26,6 +26,11 @@ See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and b
 5. Run the first synchronization and add the block or shortcode.
 
 == Changelog ==
+
+= 2.0.0 =
+* Rebranded as Vemoro SocialFeed for WP.
+* Added the hosted Vemoro OAuth connection as the default and retained own-app expert mode.
+* Added new Vemoro block, shortcode, template function and WP-CLI aliases without removing legacy integrations.
 
 = 1.0.30 =
 * Fuegt eine bestaetigungspflichtige Bereinigung fuer nicht mehr zugeordnete plugin-eigene Medien hinzu.

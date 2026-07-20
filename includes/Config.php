@@ -8,6 +8,7 @@ final class Config {
 	public const DB_VERSION_OPTION = 'lif_db_version';
 	public const DB_VERSION = '1.1.0';
 	public const DEFAULT_API_VERSION = 'v25.0';
+	public const DEFAULT_CONNECT_URL = 'https://connect.vemoro.de';
 	public const POST_TYPE = 'lif_instagram_post';
 	public const CRON_HOOK = 'lif_sync_instagram_feed';
 	public const LOCK_KEY = 'lif_sync_lock';
@@ -17,6 +18,7 @@ final class Config {
 	/** @return array<string,mixed> */
 	public static function defaults(): array {
 		return array(
+			'oauth_provider' => 'vemoro', 'connect_url' => self::DEFAULT_CONNECT_URL,
 			'app_id' => '', 'app_secret' => '', 'redirect_uri' => '', 'api_version' => self::DEFAULT_API_VERSION,
 			'post_limit' => 12, 'sync_interval' => 'lif_two_hours', 'caption_length' => 300, 'excess_retention_days' => 30,
 			'deleted_behavior' => 'inactive', 'show_link' => false, 'new_tab' => true,
@@ -32,7 +34,24 @@ final class Config {
 	/** @return array<string,mixed> */
 	public static function settings(): array {
 		$value = get_option(self::OPTION, array());
-		return wp_parse_args(is_array($value) ? $value : array(), self::defaults());
+		$value = is_array($value) ? $value : array();
+		// Preserve working pre-2.0 installations as expert-mode connections.
+		if (! isset($value['oauth_provider']) && (! empty($value['app_id']) || defined('LIF_INSTAGRAM_APP_ID'))) {
+			$value['oauth_provider'] = 'custom';
+		}
+		return wp_parse_args($value, self::defaults());
+	}
+
+	public static function usesHostedOAuth(): bool {
+		return 'vemoro' === (string) self::settings()['oauth_provider'];
+	}
+
+	public static function connectUrl(): string {
+		if (defined('VEMORO_SOCIALFEED_CONNECT_URL')) {
+			return untrailingslashit((string) VEMORO_SOCIALFEED_CONNECT_URL);
+		}
+		$url = (string) self::settings()['connect_url'];
+		return untrailingslashit($url ?: self::DEFAULT_CONNECT_URL);
 	}
 
 	public static function appId(): string {
