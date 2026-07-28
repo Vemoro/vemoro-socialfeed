@@ -14,7 +14,6 @@ final class Config {
 	public const LOCK_KEY = 'lif_sync_lock';
 	public const REFRESH_GENERATION_OPTION = 'lif_refresh_generation';
 	public const APPLIED_REFRESH_GENERATION_OPTION = 'lif_applied_refresh_generation';
-	public const ACTIVATED_AT_OPTION = 'lif_activated_at';
 	public const LIBERAPAY_URL = 'https://liberapay.com/vemoro/donate';
 	public const GITHUB_SPONSORS_URL = 'https://github.com/sponsors/vemoro';
 

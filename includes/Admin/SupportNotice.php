@@ -6,23 +6,17 @@ use LocalInstagramFeed\Config;
 final class SupportNotice {
 	private const DISMISSED_META = 'lif_support_notice_dismissed';
 	private const REMIND_AT_META = 'lif_support_notice_remind_at';
-	private const FIRST_NOTICE_DELAY = 14 * DAY_IN_SECONDS;
 	private const REMINDER_DELAY = 120 * DAY_IN_SECONDS;
 
 	public function register(): void {
-		add_action('admin_init', array($this, 'ensureActivationTime'));
 		add_action('admin_notices', array($this, 'render'));
 		add_action('admin_post_lif_support_remind_later', array($this, 'remindLater'));
 		add_action('admin_post_lif_support_dismiss', array($this, 'dismiss'));
 	}
 
-	public function ensureActivationTime(): void {
-		add_option(Config::ACTIVATED_AT_OPTION, time(), '', false);
-	}
-
 	public function render(): void {
 		$screen = function_exists('get_current_screen') ? get_current_screen() : null;
-		if (($screen && str_contains((string) $screen->id, 'local-instagram-feed')) || ! current_user_can('manage_options') || ! $this->isDue(get_current_user_id())) {
+		if (($screen && str_contains((string) $screen->id, 'local-instagram-feed')) || ! current_user_can('read') || ! $this->isDue(get_current_user_id())) {
 			return;
 		}
 
@@ -65,14 +59,6 @@ final class SupportNotice {
 		if ('1' === (string) get_user_meta($userId, self::DISMISSED_META, true)) {
 			return false;
 		}
-		$activatedAt = (int) get_option(Config::ACTIVATED_AT_OPTION, 0);
-		if ($activatedAt <= 0 || time() < $activatedAt + self::FIRST_NOTICE_DELAY) {
-			return false;
-		}
-		$status = (array) get_option(Config::STATUS_OPTION, array());
-		if (empty($status['last_success'])) {
-			return false;
-		}
 		return time() >= (int) get_user_meta($userId, self::REMIND_AT_META, true);
 	}
 
@@ -88,7 +74,7 @@ final class SupportNotice {
 	}
 
 	private function guard(string $action): void {
-		if (! current_user_can('manage_options')) {
+		if (! current_user_can('read')) {
 			wp_die(esc_html__('Insufficient permissions.', 'local-instagram-feed'));
 		}
 		check_admin_referer($action);

@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "name": "local-instagram-feed/feed",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "title": "Lokaler Instagram-Feed (Kompatibilität)",
   "category": "widgets",
   "icon": "instagram",

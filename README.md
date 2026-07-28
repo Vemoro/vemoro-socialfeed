@@ -246,9 +246,13 @@ Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zu
 
 Vemoro SocialFeed for WP bleibt kostenlos, werbefrei und ohne Tracking. Freiwillige Beiträge über [Liberapay](https://liberapay.com/vemoro/donate) oder [GitHub Sponsors](https://github.com/sponsors/vemoro) helfen bei Wartung, Sicherheitsupdates, Hosting und Betrieb des Vemoro-Verbindungsdienstes.
 
-Administratoren erhalten frühestens 14 Tage nach der Aktivierung und erst nach einer erfolgreichen Synchronisierung einen entsprechenden WordPress-Adminhinweis. Dieser lässt sich für 120 Tage zurückstellen oder pro Administrator dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
+Alle angemeldeten Benutzer sehen den entsprechenden Hinweis unmittelbar im WordPress-Backend. Er lässt sich für 120 Tage zurückstellen oder pro Benutzer dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
 
 ## Changelog
+
+### 2.0.2
+
+- Unterstützungshinweis ohne Wartefrist für alle angemeldeten Benutzer im WordPress-Backend freigeschaltet; Zurückstellen und dauerhaftes Ausblenden bleiben benutzerbezogen.
 
 ### 2.0.1
 

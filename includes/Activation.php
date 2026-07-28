@@ -15,7 +15,6 @@ final class Activation {
 			update_option(Config::REFRESH_GENERATION_OPTION, (int) get_option(Config::REFRESH_GENERATION_OPTION, 0) + 1, false);
 		}
 		add_option(Config::STATUS_OPTION, array());
-		add_option(Config::ACTIVATED_AT_OPTION, time(), '', false);
 		self::createTables();
 		CronManager::schedule();
 		Plugin::registerPostType();

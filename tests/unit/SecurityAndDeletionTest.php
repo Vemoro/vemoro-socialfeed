@@ -16,14 +16,12 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$this->assertSame(admin_url('admin.php'),Config::redirectUri());
 		update_option(Config::OPTION,$old,false);
 	}
-	public function test_support_notice_is_delayed_private_and_dismissible(): void {
-		$user=self::factory()->user->create(array('role'=>'administrator'));wp_set_current_user($user);$oldActivation=get_option(Config::ACTIVATED_AT_OPTION,null);$oldStatus=get_option(Config::STATUS_OPTION,array());
-		update_option(Config::ACTIVATED_AT_OPTION,time(),false);update_option(Config::STATUS_OPTION,array('last_success'=>time()),false);$notice=new SupportNotice();
-		ob_start();$notice->render();$early=(string)ob_get_clean();$this->assertSame('',$early);
-		update_option(Config::ACTIVATED_AT_OPTION,time()-(15*DAY_IN_SECONDS),false);ob_start();$notice->render();$html=(string)ob_get_clean();
+	public function test_support_notice_is_immediate_private_and_dismissible_for_non_admins(): void {
+		$user=self::factory()->user->create(array('role'=>'subscriber'));wp_set_current_user($user);$notice=new SupportNotice();
+		ob_start();$notice->render();$html=(string)ob_get_clean();
 		$this->assertStringContainsString(Config::LIBERAPAY_URL,$html);$this->assertStringContainsString(Config::GITHUB_SPONSORS_URL,$html);$this->assertStringNotContainsString('<script',$html);$this->assertStringNotContainsString('<img',$html);
 		update_user_meta($user,'lif_support_notice_dismissed','1');ob_start();$notice->render();$dismissed=(string)ob_get_clean();$this->assertSame('',$dismissed);
-		delete_user_meta($user,'lif_support_notice_dismissed');if(null===$oldActivation){delete_option(Config::ACTIVATED_AT_OPTION);}else{update_option(Config::ACTIVATED_AT_OPTION,$oldActivation,false);}update_option(Config::STATUS_OPTION,$oldStatus,false);
+		delete_user_meta($user,'lif_support_notice_dismissed');
 	}
 	public function test_removed_post_is_only_deactivated_after_three_complete_observations(): void {
 		$post=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish'));update_post_meta($post,'_lif_media_id','missing');update_post_meta($post,'_lif_timestamp','2026-01-01T00:00:00+0000');update_post_meta($post,'_lif_status','active');$repo=new PostRepository();
