@@ -248,7 +248,13 @@ Vemoro SocialFeed for WP bleibt kostenlos, werbefrei und ohne Tracking. Freiwill
 
 Alle angemeldeten Benutzer sehen den entsprechenden Hinweis unmittelbar im WordPress-Backend. Er lässt sich für 120 Tage zurückstellen oder pro Benutzer dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
 
+Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vemoro.de) gesendet werden. Die Adresse wird sowohl im Backend-Hinweis als auch in der Plugin-Verwaltung angezeigt.
+
 ## Changelog
+
+### 2.0.3
+
+- Kontaktmöglichkeit `support@vemoro.de` im Backend-Hinweis, im Unterstützungsbereich und in der Dokumentation ergänzt.
 
 ### 2.0.2
 

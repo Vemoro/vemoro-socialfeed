@@ -30,7 +30,9 @@ final class SupportNotice {
 		echo '</p><div class="lif-support-notice__actions">';
 		$this->renderActionForm('lif_support_remind_later', __('Remind me later', 'local-instagram-feed'));
 		$this->renderActionForm('lif_support_dismiss', __('Do not show again', 'local-instagram-feed'));
-		echo '</div><p class="description">' . esc_html__('Supporting is entirely voluntary and has no effect on the plugin features.', 'local-instagram-feed') . '</p></div>';
+		echo '</div><p>' . esc_html__('Questions or problems?', 'local-instagram-feed') . ' ';
+		self::renderSupportEmail();
+		echo '</p><p class="description">' . esc_html__('Supporting is entirely voluntary and has no effect on the plugin features.', 'local-instagram-feed') . '</p></div>';
 	}
 
 	public static function renderSupportCard(): void {
@@ -39,6 +41,8 @@ final class SupportNotice {
 		self::renderExternalLink(Config::LIBERAPAY_URL, __('Support via Liberapay', 'local-instagram-feed'), 'button button-primary');
 		echo ' ';
 		self::renderExternalLink(Config::GITHUB_SPONSORS_URL, __('Support via GitHub Sponsors', 'local-instagram-feed'), 'button');
+		echo '</p><p><strong>' . esc_html__('Technical support:', 'local-instagram-feed') . '</strong> ';
+		self::renderSupportEmail();
 		echo '</p><p class="description">' . esc_html__('No connection to either service is made until you click a link.', 'local-instagram-feed') . '</p></div>';
 	}
 
@@ -71,6 +75,10 @@ final class SupportNotice {
 
 	private static function renderExternalLink(string $url, string $label, string $class): void {
 		echo '<a class="' . esc_attr($class) . '" href="' . esc_url($url) . '" target="_blank" rel="noopener noreferrer external">' . esc_html($label) . '<span class="screen-reader-text"> ' . esc_html__('(opens in a new tab)', 'local-instagram-feed') . '</span></a>';
+	}
+
+	private static function renderSupportEmail(): void {
+		echo '<a href="' . esc_url('mailto:' . Config::SUPPORT_EMAIL) . '">' . esc_html(Config::SUPPORT_EMAIL) . '</a>';
 	}
 
 	private function guard(string $action): void {

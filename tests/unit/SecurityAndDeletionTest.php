@@ -19,7 +19,7 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 	public function test_support_notice_is_immediate_private_and_dismissible_for_non_admins(): void {
 		$user=self::factory()->user->create(array('role'=>'subscriber'));wp_set_current_user($user);$notice=new SupportNotice();
 		ob_start();$notice->render();$html=(string)ob_get_clean();
-		$this->assertStringContainsString(Config::LIBERAPAY_URL,$html);$this->assertStringContainsString(Config::GITHUB_SPONSORS_URL,$html);$this->assertStringNotContainsString('<script',$html);$this->assertStringNotContainsString('<img',$html);
+		$this->assertStringContainsString(Config::LIBERAPAY_URL,$html);$this->assertStringContainsString(Config::GITHUB_SPONSORS_URL,$html);$this->assertStringContainsString('mailto:'.Config::SUPPORT_EMAIL,$html);$this->assertStringNotContainsString('<script',$html);$this->assertStringNotContainsString('<img',$html);
 		update_user_meta($user,'lif_support_notice_dismissed','1');ob_start();$notice->render();$dismissed=(string)ob_get_clean();$this->assertSame('',$dismissed);
 		delete_user_meta($user,'lif_support_notice_dismissed');
 	}

@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.2
+Stable tag: 2.0.3
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
@@ -34,7 +34,12 @@ Vemoro SocialFeed for WP remains free of charge, without advertising or tracking
 
 All signed-in users see the support notice immediately in the WordPress backend. It can be postponed for 120 days or permanently hidden per user. The plugin does not load external resources for these notices; a connection to a funding service is made only after its link is clicked. Supporting is entirely voluntary and does not change the available features.
 
+For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
+
 == Changelog ==
+
+= 2.0.3 =
+* Adds support@vemoro.de to the backend notice, plugin administration area and documentation.
 
 = 2.0.2 =
 * Shows the support notice immediately to all signed-in WordPress backend users while keeping postponement and permanent dismissal user-specific.

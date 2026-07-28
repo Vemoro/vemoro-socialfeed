@@ -3,7 +3,7 @@ return array(
 	'x-generator'               => 'Vemoro SocialFeed for WP',
 	'translation-revision-date' => '2026-07-20 00:00:00+0000',
 	'plural-forms'              => 'nplurals=2; plural=n != 1;',
-	'project-id-version'        => 'Vemoro SocialFeed for WP 2.0.2',
+	'project-id-version'        => 'Vemoro SocialFeed for WP 2.0.3',
 	'language'                  => 'de',
 	'messages'                  => array(
 		'Vemoro SocialFeed for WP requires PHP 8.1 and WordPress 6.5 or newer.' => 'Vemoro SocialFeed for WP benötigt PHP 8.1 und WordPress 6.5 oder neuer.',
@@ -234,5 +234,7 @@ return array(
 		'The plugin remains free of charge. Voluntary contributions help fund maintenance, security updates and the Vemoro connection service.' => 'Das Plugin bleibt kostenlos. Freiwillige Beiträge helfen dabei, Wartung, Sicherheitsupdates und den Vemoro-Verbindungsdienst zu finanzieren.',
 		'No connection to either service is made until you click a link.' => 'Erst beim Anklicken eines Links wird eine Verbindung zum jeweiligen Dienst hergestellt.',
 		'(opens in a new tab)'                       => '(öffnet in einem neuen Tab)',
+		'Questions or problems?'                     => 'Fragen oder Probleme?',
+		'Technical support:'                         => 'Technischer Support:',
 	),
 );
