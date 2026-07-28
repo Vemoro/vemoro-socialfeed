@@ -14,6 +14,9 @@ final class Config {
 	public const LOCK_KEY = 'lif_sync_lock';
 	public const REFRESH_GENERATION_OPTION = 'lif_refresh_generation';
 	public const APPLIED_REFRESH_GENERATION_OPTION = 'lif_applied_refresh_generation';
+	public const ACTIVATED_AT_OPTION = 'lif_activated_at';
+	public const LIBERAPAY_URL = 'https://liberapay.com/vemoro/donate';
+	public const GITHUB_SPONSORS_URL = 'https://github.com/sponsors/vemoro';
 
 	/** @return array<string,mixed> */
 	public static function defaults(): array {
@@ -21,7 +24,7 @@ final class Config {
 			'oauth_provider' => 'vemoro', 'connect_url' => self::DEFAULT_CONNECT_URL,
 			'app_id' => '', 'app_secret' => '', 'redirect_uri' => '', 'api_version' => self::DEFAULT_API_VERSION,
 			'post_limit' => 12, 'sync_interval' => 'lif_two_hours', 'caption_length' => 300, 'excess_retention_days' => 30,
-			'deleted_behavior' => 'inactive', 'show_link' => false, 'new_tab' => true,
+			'deleted_behavior' => 'inactive', 'missing_grace_hours' => 0, 'show_link' => false, 'new_tab' => true,
 			'show_reels' => true, 'show_carousels' => true, 'mirror_videos' => true, 'video_autoplay' => true,
 			'columns' => 3, 'columns_tablet' => 2, 'columns_mobile' => 1, 'aspect_ratio' => '9/16',
 			'show_caption' => true, 'show_date' => true, 'show_username' => true,

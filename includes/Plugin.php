@@ -2,6 +2,7 @@
 namespace LocalInstagramFeed;
 
 use LocalInstagramFeed\Admin\AdminPage;
+use LocalInstagramFeed\Admin\SupportNotice;
 use LocalInstagramFeed\Api\InstagramApiClient;
 use LocalInstagramFeed\Api\OAuthService;
 use LocalInstagramFeed\Api\TokenService;
@@ -30,7 +31,10 @@ final class Plugin {
 		add_action('after_setup_theme', static function(): void { add_image_size('lif-feed', 1080, 1080, false); });
 		CronManager::register(); (new Integrations($this->renderer()))->register();
 		$services = $this->services();
-		if (is_admin()) { (new AdminPage(new OAuthService(), $services['tokens'], $services['api'], $services['sync'], $services['posts'], $services['logs'], $services['secrets']))->register(); }
+		if (is_admin()) {
+			(new AdminPage(new OAuthService(), $services['tokens'], $services['api'], $services['sync'], $services['posts'], $services['logs'], $services['secrets']))->register();
+			(new SupportNotice())->register();
+		}
 		add_action('lif_refresh_token_retry', fn(): bool => $services['tokens']->refresh(true));
 		add_action('updated_post_meta', array($this, 'attachmentMetaChanged'), 10, 4); add_action('added_post_meta', array($this, 'attachmentMetaChanged'), 10, 4);
 		add_action('save_post_' . Config::POST_TYPE, static function(): void { FeedRenderer::clearCache(); });

@@ -12,7 +12,7 @@ final class FeedRenderer {
 		$options = $this->normalize($args); $this->enqueue();
 		$version = (int) get_option('lif_cache_version', 1); $key = 'lif_feed_' . md5((string) wp_json_encode(array(LIF_VERSION, $version, $options, get_locale())));
 		$cached = get_transient($key); if (is_string($cached)) { return $cached; }
-		$queryArgs = array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','posts_per_page'=>$options['posts'],'orderby'=>'date','order'=>$options['order'],'no_found_rows'=>true,'meta_query'=>array('relation'=>'AND',array('key'=>'_lif_status','value'=>'active'),array('relation'=>'OR',array('key'=>'_lif_display_enabled','compare'=>'NOT EXISTS'),array('key'=>'_lif_display_enabled','value'=>'1'))));
+		$queryArgs = array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','posts_per_page'=>$options['posts'],'orderby'=>'date','order'=>$options['order'],'no_found_rows'=>true,'meta_query'=>array('relation'=>'AND',array('key'=>'_lif_status','value'=>'active'),array('relation'=>'OR',array('key'=>'_lif_exists','compare'=>'NOT EXISTS'),array('key'=>'_lif_exists','value'=>'1')),array('relation'=>'OR',array('key'=>'_lif_display_enabled','compare'=>'NOT EXISTS'),array('key'=>'_lif_display_enabled','value'=>'1'))));
 		if ($options['post_id'] > 0) { $queryArgs['p'] = $options['post_id']; $queryArgs['posts_per_page'] = 1; }
 		$query = new \WP_Query($queryArgs);
 		if (! $query->have_posts()) { return '<p class="lif-feed-empty">' . esc_html__('No Instagram posts are available locally yet.', 'local-instagram-feed') . '</p>'; }

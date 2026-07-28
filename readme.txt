@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
@@ -13,6 +13,10 @@ Synchronizes a professional Instagram account server-side and renders a feed usi
 
 Vemoro SocialFeed for WP uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
 
+Visitors do not connect to Meta on ordinary page views. Only the website operator's server communicates with the Instagram API during OAuth, synchronization, and token maintenance. Temporary API or token failures never trigger immediate deletion. A confirmed permanent disconnect removes the token and all API-derived Platform Data; plugin-owned media are deleted only when they are not referenced elsewhere in WordPress.
+
+Missing posts are removed from the public feed only after three complete authoritative synchronizations and an optional grace period of up to 48 hours. The plugin synchronizes only media returned by Meta as media owned by the connected account. Native reposts and Collab posts owned by another account are not reliably returned and are therefore not supported or heuristically classified.
+
 The plugin does not claim that a particular use is legally GDPR compliant. Operators remain responsible for published content, image rights, personal data, and their privacy notice.
 
 See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and browser acceptance instructions.
@@ -20,12 +24,24 @@ See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and b
 == Installation ==
 
 1. Activate the plugin.
-2. Configure a Meta App ID and Secret.
-3. Add the displayed HTTPS redirect URI to Meta's Instagram Login configuration.
-4. Connect a Business or Creator account.
-5. Run the first synchronization and add the block or shortcode.
+2. Keep the recommended Vemoro Login selected, or configure an own Meta app in expert mode.
+3. Connect a Business or Creator account.
+4. Run the first synchronization and add the block or shortcode.
+
+== Voluntary support ==
+
+Vemoro SocialFeed for WP remains free of charge, without advertising or tracking. Voluntary contributions through Liberapay or GitHub Sponsors help fund maintenance, security updates, hosting and operation of the Vemoro connection service.
+
+Administrators see a support notice no earlier than 14 days after activation and only after a successful synchronization. It can be postponed for 120 days or permanently hidden per administrator. The plugin does not load external resources for these notices; a connection to a funding service is made only after its link is clicked. Supporting is entirely voluntary and does not change the available features.
 
 == Changelog ==
+
+= 2.0.1 =
+* Removes unreliable Collab and repost filters and documents that only the account-owned media returned by Meta is synchronized.
+* Adds an optional missing-post grace period of up to 48 hours and ensures confirmed removed posts no longer remain public.
+* Makes permanent disconnect delete API-derived Platform Data after explicit confirmation while temporary API and token failures retain data for reconnection.
+* Clarifies frontend privacy, server-side Meta communication, data deletion, and uninstall behavior.
+* Adds privacy-friendly voluntary support links for Liberapay and GitHub Sponsors with a delayed, postponable and permanently dismissible administrator notice.
 
 = 2.0.0 =
 * Rebranded as Vemoro SocialFeed for WP.

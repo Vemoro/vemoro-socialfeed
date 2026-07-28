@@ -39,6 +39,7 @@ final class PostRepository {
 			'_lif_like_count' => $media->likeCount, '_lif_comments_count' => $media->commentsCount,
 		);
 		foreach ($meta as $key => $value) { update_post_meta($postId, $key, $value); }
+		delete_post_meta($postId, '_lif_missing_since');
 		if ($attachmentId) { set_post_thumbnail($postId, $attachmentId); }
 		$this->upsertIndex($media->id, $postId, '', $attachmentId, $videoAttachmentId, 0, $media->mediaType, $hash, 'ok', '');
 		return array('post_id' => $postId, 'created' => ! isset($data['ID']));
@@ -49,6 +50,7 @@ final class PostRepository {
 		update_post_meta($postId, '_lif_missing_count', 0);
 		update_post_meta($postId, '_lif_exists', '1');
 		update_post_meta($postId, '_lif_display_enabled', '1');
+		delete_post_meta($postId, '_lif_missing_since');
 	}
 
 	public function setDisplayEnabled(string $mediaId, bool $enabled): void {
@@ -67,7 +69,7 @@ final class PostRepository {
 	}
 
 	/** @param array<int,string> $seen */
-	public function markMissing(array $seen, string $oldestTimestamp, string $behavior): int {
+	public function markMissing(array $seen, string $oldestTimestamp, string $behavior, int $graceHours = 0): int {
 		if (! $seen || ! $oldestTimestamp) { return 0; }
 		$query = new \WP_Query(array('post_type' => Config::POST_TYPE, 'post_status' => array('publish', 'draft', 'trash'), 'posts_per_page' => -1, 'fields' => 'ids', 'meta_query' => array(array('key' => '_lif_timestamp', 'value' => $oldestTimestamp, 'compare' => '>='))));
 		$removed = 0;
@@ -76,13 +78,16 @@ final class PostRepository {
 			if (in_array($id, $seen, true) || '1' === get_post_meta($postId, '_lif_removed_handled', true)) { continue; }
 			$count = (int) get_post_meta($postId, '_lif_missing_count', true) + 1;
 			update_post_meta($postId, '_lif_missing_count', $count);
+			$missingSince = (int) get_post_meta($postId, '_lif_missing_since', true);
+			if ($missingSince <= 0) { $missingSince = time(); update_post_meta($postId, '_lif_missing_since', $missingSince); }
 			if ($count < 3) { continue; }
+			$graceHours = max(0, min(48, $graceHours));
+			if ($graceHours > 0 && time() < $missingSince + ($graceHours * HOUR_IN_SECONDS)) { continue; }
 			update_post_meta($postId, '_lif_exists', '0'); update_post_meta($postId, '_lif_removed_handled', '1');
-			if ('keep' === $behavior) { update_post_meta($postId, '_lif_status', 'active'); }
-			else { update_post_meta($postId, '_lif_status', 'removed'); }
+			update_post_meta($postId, '_lif_status', 'removed');
 			if ('trash' === $behavior) { wp_trash_post((int) $postId); }
 			elseif ('delete' === $behavior) { $this->deleteOwnedAttachments((int) $postId); wp_delete_post((int) $postId, true); }
-			elseif ('inactive' === $behavior) { wp_update_post(array('ID' => (int) $postId, 'post_status' => 'draft')); }
+			else { wp_update_post(array('ID' => (int) $postId, 'post_status' => 'draft')); }
 			++$removed;
 		}
 		return $removed;
@@ -95,7 +100,7 @@ final class PostRepository {
 	/** @return array{posts:int,attachments:int,retained_attachments:int} */
 	public function pruneExcess(int $limit, int $retentionDays): array {
 		$allPostIds=get_posts(array('post_type'=>Config::POST_TYPE,'post_status'=>array('publish','draft','trash'),'posts_per_page'=>-1,'fields'=>'ids','orderby'=>'date','order'=>'DESC','suppress_filters'=>true));
-		$limit=max(1,$limit);$keptPostIds=get_posts(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','posts_per_page'=>$limit,'fields'=>'ids','orderby'=>'date','order'=>'DESC','suppress_filters'=>true,'meta_query'=>array('relation'=>'AND',array('key'=>'_lif_status','value'=>'active'),array('relation'=>'OR',array('key'=>'_lif_display_enabled','compare'=>'NOT EXISTS'),array('key'=>'_lif_display_enabled','value'=>'1')))));
+		$limit=max(1,$limit);$keptPostIds=get_posts(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish','posts_per_page'=>$limit,'fields'=>'ids','orderby'=>'date','order'=>'DESC','suppress_filters'=>true,'meta_query'=>array('relation'=>'AND',array('key'=>'_lif_status','value'=>'active'),array('relation'=>'OR',array('key'=>'_lif_exists','compare'=>'NOT EXISTS'),array('key'=>'_lif_exists','value'=>'1')),array('relation'=>'OR',array('key'=>'_lif_display_enabled','compare'=>'NOT EXISTS'),array('key'=>'_lif_display_enabled','value'=>'1')))));
 		$allPostIds=array_values(array_map('intval',$allPostIds));$keptPostIds=array_values(array_map('intval',$keptPostIds));
 		foreach($keptPostIds as $postId){delete_post_meta($postId,'_lif_excess_since');}
 		$candidates=array_values(array_diff($allPostIds,$keptPostIds));$result=array('posts'=>0,'attachments'=>0,'retained_attachments'=>0);

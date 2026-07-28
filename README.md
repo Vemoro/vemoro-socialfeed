@@ -95,7 +95,7 @@ Temporäre Media-URLs allein ändern den semantischen Beitrags-Hash nicht. Vorha
 
 Werden Darstellungsoptionen geändert, markiert das Plugin den nächsten Lauf als Vollaktualisierung. Dabei werden alle bereits vorhandenen Beiträge im abgerufenen Bestand erneut verarbeitet, bestehende gültige Attachments aber weiterhin wiederverwendet. Der Synchronisierungs-Tab zeigt an, ob eine Vollaktualisierung aussteht.
 
-Ein fehlender Beitrag gilt nur innerhalb eines erfolgreich abgerufenen aktuellen Zeitfensters als abwesend. Erst drei erfolgreiche entsprechende Läufe führen zur gewählten Aktion: behalten, deaktivieren, Papierkorb oder endgültig löschen. API- und Pagingfehler sind kein Löschsignal.
+Ein fehlender Beitrag gilt nur innerhalb eines vollständig und erfolgreich abgerufenen aktuellen Zeitfensters als abwesend. Erst drei autoritative Läufe lösen die konfigurierte Aktion aus. Optional kann zusätzlich eine Karenzzeit von 12, 24 oder höchstens 48 Stunden verlangt werden. API-, Token- und Pagingfehler sind kein Löschsignal und erhöhen weder den Zähler noch die Karenzzeit. Wird ein Beitrag nach dieser Regel als dauerhaft nicht mehr vorhanden bestätigt, wird er in jedem Aufbewahrungsmodus aus dem öffentlichen Feed entfernt; er kann anschließend lokal inaktiv bleiben, in den Papierkorb verschoben oder endgültig gelöscht werden.
 
 Für Beiträge oberhalb des konfigurierten Synchronisierungslimits gibt es eine getrennte Aufbewahrungsregel: dauerhaft behalten, sofort oder nach 7, 30, 90, 180 beziehungsweise 365 Tagen löschen. Die Frist beginnt beim ersten vollständigen und fehlerfreien Lauf, in dem ein Beitrag außerhalb des Limits liegt. Beim Löschen werden Plugin-Zuordnungen und nicht anderweitig verwendete Plugin-Medien einschließlich lokaler Videos entfernt. Wird das Limit später erhöht, wird die laufende Frist für wieder eingeschlossene Beiträge zurückgesetzt.
 
@@ -105,7 +105,9 @@ Alle Medien erscheinen standardmäßig in einer einheitlichen 9:16-Reel-Fläche.
 
 Der Feed wird mit JavaScript responsiv nach ungefähr 25 Prozent seiner zweiten Beitragszeile ausgeblendet. Die lokale Schaltfläche „Mehr anzeigen“ fügt die weiteren Beiträge erst beim Klick aus einem inaktiven HTML-Template ein und klappt sie mit einer ruhigen Aufslide-Animation auf. Deren Bilder und Videos werden daher vorher nicht angefordert. Bilder verwenden zusätzlich natives Lazy-Loading und Videos laden nach dem Einfügen zunächst nur Metadaten. Ohne JavaScript bleiben die ersten zwei Zeilen zugänglich. Bei reduzierter Bewegung wird ohne Animation geöffnet.
 
-Likes und Kommentaranzahl werden mit dem normalen Medienabruf synchronisiert und lokal angezeigt. Kommentartexte werden weder geladen noch ausgegeben. Das Plugin fordert weiterhin ausschließlich `instagram_business_basic` an. Share-, View-, Save- oder Repost-Statistiken werden nicht abgerufen, da sie zusätzliche Insights-Berechtigungen erfordern können. Erkannte Reposts werden anhand der vorhandenen Medienart beziehungsweise eines abweichenden Kontonamens aus dem Feed ausgeblendet.
+Likes und Kommentaranzahl werden mit dem normalen Medienabruf synchronisiert und lokal angezeigt. Kommentartexte werden weder geladen noch ausgegeben. Das Plugin fordert weiterhin ausschließlich `instagram_business_basic` an. Share-, View-, Save- oder Repost-Statistiken werden nicht abgerufen, da sie zusätzliche Insights-Berechtigungen erfordern können.
+
+Synchronisiert wird ausschließlich der Medienbestand, den Meta für das verbundene professionelle Konto über `/{ig-user-id}/media` zurückgibt. Native Instagram-Reposts und Collab-Beiträge, deren ursprünglicher Eigentümer ein anderes Konto ist, gehören nicht zuverlässig zu diesem Bestand und werden deshalb nicht unterstützt. Ist das verbundene Konto selbst ursprünglicher Eigentümer eines Collab-Beitrags, kann Meta ihn als normalen eigenen Beitrag liefern; die API stellt dabei kein verlässliches Collab-Merkmal bereit. Das Plugin bietet daher keine Repost- oder Collab-Filter an und behauptet keine Erkennung, die sich mit der offiziellen API nicht belastbar umsetzen lässt.
 
 ## Ausgabe
 
@@ -162,9 +164,9 @@ Beispiel für einen echten Server-Cron:
 
 - Keine Cookies, Besucher-IDs, IP-Protokollierung, Fingerprints oder Telemetrie
 - Keine Meta-Skripte, SDKs, iframes, Pixel, Fonts oder Styles im Frontend
-- Keine Browseraufrufe an die Instagram API
+- Besucher bauen beim Seitenaufruf keine Verbindung zu Meta auf; es gibt keine Browseraufrufe an die Instagram API
 - Renderer akzeptiert nur Attachment-URLs mit demselben Host wie `home_url()`
-- API-Zugriffe nur bei OAuth, Prüfung, Tokenpflege oder Synchronisierung
+- Ausschließlich der Server des Websitebetreibers kommuniziert während OAuth, Synchronisierung und Tokenpflege mit der Instagram API
 - OAuth-State ist zufällig, benutzergebunden, gehasht, zehn Minuten gültig und nur einmal verwendbar
 - Adminaktionen verwenden `manage_options` und WordPress-Nonces
 - Mediendownloads erlauben HTTPS und Meta-Medienhosts, prüfen DNS/IP gegen private Netze, jeden Redirect, Dateigröße und echten MIME-Typ
@@ -173,6 +175,8 @@ Beispiel für einen echten Server-Cron:
 Normale Instagram-Links werden nur bei aktivierter Einstellung ausgegeben, als externe Links gekennzeichnet und erst durch einen bewussten Klick aufgerufen.
 
 Im Datenschutz-Tab können alle synchronisierten Beiträge und Zuordnungen gelöscht werden. Plugin-eigene Medien werden nur entfernt, wenn sie nicht als Beitragsbild oder Inhalt außerhalb des Instagram-Feeds referenziert sind. Verbindung und Einstellungen bleiben erhalten, sodass anschließend sofort neu synchronisiert werden kann.
+
+Vorübergehende API-Fehler oder Tokenprobleme lösen keine sofortige Löschung aus. Der Administrator wird über Status und Protokolle informiert und kann das Konto erneut verbinden. Kann Meta nicht eindeutig zwischen einer vorübergehenden Störung und einem dauerhaften Widerruf unterscheiden, trifft das Plugin keine automatische destruktive Annahme. Sobald der Administrator eine dauerhaft getrennte oder widerrufene Verbindung über „Verbindung trennen und Instagram-Daten löschen“ bestätigt, entfernt das Plugin Token sowie sämtliche über die Instagram API bezogenen Platform-Daten: Beiträge, Captions, Metadaten, Eltern-/Kind-Zuordnungen und ausschließlich die vom Plugin angelegten, nirgendwo sonst in WordPress referenzierten Medien.
 
 ## Browser-Abnahme ohne Meta-Requests
 
@@ -224,7 +228,9 @@ git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-
 
 ## Deaktivierung und Deinstallation
 
-Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen des Plugins bleiben Daten standardmäßig erhalten. Nur wenn zuvor „Alle Plugin-Daten bei Deinstallation löschen“ aktiviert wurde, entfernt `uninstall.php` Plugin-Beiträge, plugin-eigene Attachments, Tabellen, Optionen, Secrets, Transients und Zeitpläne endgültig.
+Das Trennen einer dauerhaft widerrufenen Verbindung ist eine bestätigungspflichtige Löschaktion: Token, Posts, Captions, Metadaten und Zuordnungen werden entfernt. Ausschließlich plugin-eigene Attachments werden gelöscht, und auch diese nur, wenn sie nicht anderweitig in WordPress referenziert sind. Vorübergehende Verbindungsfehler führen dagegen nicht zur Löschung und können durch erneutes Verbinden behoben werden.
+
+Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen des Plugins bleiben Daten standardmäßig erhalten. Nur wenn zuvor „Alle Plugin-Daten bei Deinstallation löschen“ aktiviert wurde, entfernt `uninstall.php` Plugin-Beiträge, plugin-eigene Attachments, Tabellen, Optionen, Secrets, Transients und Zeitpläne endgültig. Wer die Installation bei bestehender Verbindung vollständig außer Betrieb nimmt, sollte daher vorher entweder die Verbindung mit Datenlöschung trennen oder die Deinstallationslöschung aktivieren.
 
 Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt ausschließlich plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
 
@@ -236,7 +242,21 @@ Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zu
 - Externe Instagram-Links verlassen beim Anklicken bewusst die lokale Website
 - Die Nutzung entbindet den Betreiber nicht von der Prüfung von Bildrechten, Einwilligungen, Löschpflichten und Datenschutzerklärung
 
+## Freiwillige Unterstützung
+
+Vemoro SocialFeed for WP bleibt kostenlos, werbefrei und ohne Tracking. Freiwillige Beiträge über [Liberapay](https://liberapay.com/vemoro/donate) oder [GitHub Sponsors](https://github.com/sponsors/vemoro) helfen bei Wartung, Sicherheitsupdates, Hosting und Betrieb des Vemoro-Verbindungsdienstes.
+
+Administratoren erhalten frühestens 14 Tage nach der Aktivierung und erst nach einer erfolgreichen Synchronisierung einen entsprechenden WordPress-Adminhinweis. Dieser lässt sich für 120 Tage zurückstellen oder pro Administrator dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
+
 ## Changelog
+
+### 2.0.1
+
+- Nicht belastbare Collab- und Repost-Filter entfernt; das Plugin verarbeitet ausschließlich den von Meta gelieferten kontoeigenen Medienbestand.
+- Drei-Sync-Regel um eine optionale Karenzzeit bis 48 Stunden erweitert; dauerhaft fehlende Beiträge bleiben nicht mehr öffentlich sichtbar.
+- Dauerhaftes Trennen löscht nach ausdrücklicher Bestätigung Token und API-bezogene Platform-Daten; vorübergehende API- oder Tokenfehler lösen keine Löschung aus.
+- Datenschutz- und Deinstallationsdokumentation zum serverseitigen Meta-Zugriff und Lebenszyklus lokaler Daten präzisiert.
+- Freiwillige Unterstützungslinks für Liberapay und GitHub Sponsors ergänzt. Der verzögerte Adminhinweis ist zurückstellbar oder dauerhaft ausblendbar und lädt keine externen Ressourcen.
 
 ### 2.0.0
 
@@ -365,7 +385,7 @@ Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zu
 - Lokale Videos starten beim Hover; es läuft immer höchstens ein Video gleichzeitig und das Play-Symbol verschwindet während der Wiedergabe.
 - Einheitliche 9:16-Reel-Flächen zeigen Hoch- und Querformat ohne Zuschnitt.
 - Vollständige Captions sind aufklappbar; Likes und Kommentaranzahl werden mit `instagram_business_basic` synchronisiert.
-- Erkannte Reposts werden ohne zusätzliche Berechtigungen ausgeblendet; Insights- und Repost-Statistiken werden nicht angefordert.
+- Insights- und Repost-Statistiken werden nicht angefordert.
 
 ### 1.0.4
 

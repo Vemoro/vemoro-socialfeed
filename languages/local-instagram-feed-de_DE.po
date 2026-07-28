@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Local Instagram Feed 1.0.0\n"
+"Project-Id-Version: Vemoro SocialFeed for WP 2.0.1\n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -35,3 +35,45 @@ msgstr "Es sind noch keine lokal gespeicherten Instagram-Beiträge verfügbar."
 
 msgid "View on Instagram – external link"
 msgstr "Auf Instagram ansehen – externer Link"
+
+msgid "Grace period for missing posts"
+msgstr "Karenzzeit für fehlende Beiträge"
+
+msgid "Disconnect and delete Instagram data"
+msgstr "Verbindung trennen und Instagram-Daten löschen"
+
+msgid "Reconnect with Instagram"
+msgstr "Erneut mit Instagram verbinden"
+
+msgid "Help keep Vemoro SocialFeed available"
+msgstr "Hilf mit, Vemoro SocialFeed dauerhaft bereitzustellen"
+
+msgid "Vemoro SocialFeed is provided free of charge and without advertising or tracking. If the plugin saves you time, you can voluntarily help cover maintenance, hosting and Meta API operating costs."
+msgstr "Vemoro SocialFeed wird kostenlos und ohne Werbung oder Tracking bereitgestellt. Wenn dir das Plugin Arbeit abnimmt, kannst du freiwillig dabei helfen, Wartung, Hosting und den Betrieb der Meta-API zu finanzieren."
+
+msgid "Support via Liberapay"
+msgstr "Über Liberapay unterstützen"
+
+msgid "Support via GitHub Sponsors"
+msgstr "Über GitHub Sponsors unterstützen"
+
+msgid "Remind me later"
+msgstr "Später erinnern"
+
+msgid "Do not show again"
+msgstr "Nicht mehr anzeigen"
+
+msgid "Supporting is entirely voluntary and has no effect on the plugin features."
+msgstr "Eine Unterstützung ist vollständig freiwillig und hat keinen Einfluss auf den Funktionsumfang des Plugins."
+
+msgid "Support development and operation"
+msgstr "Entwicklung und Betrieb unterstützen"
+
+msgid "The plugin remains free of charge. Voluntary contributions help fund maintenance, security updates and the Vemoro connection service."
+msgstr "Das Plugin bleibt kostenlos. Freiwillige Beiträge helfen dabei, Wartung, Sicherheitsupdates und den Vemoro-Verbindungsdienst zu finanzieren."
+
+msgid "No connection to either service is made until you click a link."
+msgstr "Erst beim Anklicken eines Links wird eine Verbindung zum jeweiligen Dienst hergestellt."
+
+msgid "(opens in a new tab)"
+msgstr "(öffnet in einem neuen Tab)"

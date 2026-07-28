@@ -40,11 +40,6 @@ final class Media {
 		);
 	}
 
-	public function isRepost(string $accountUsername): bool {
-		if (in_array($this->productType, array('REPOST','RESHARE','REPOSTS'), true)) { return true; }
-		return '' !== $accountUsername && '' !== $this->username && 0 !== strcasecmp($accountUsername, $this->username);
-	}
-
 	public function semanticHash(): string {
 		$children = array_map(static fn(self $child): string => $child->semanticHash(), $this->children);
 		return hash('sha256', (string) wp_json_encode(array($this->id, $this->caption, $this->mediaType, $this->productType, $this->timestamp, $children, $this->likeCount, $this->commentsCount)));

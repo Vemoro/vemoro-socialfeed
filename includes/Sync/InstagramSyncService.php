@@ -33,17 +33,20 @@ final class InstagramSyncService {
 			set_transient('lif_sync_progress', array('phase'=>'media','current'=>0,'total'=>$result->fetched,'percent'=>10), 20 * MINUTE_IN_SECONDS);
 			foreach ($batch['items'] as $media) {
 				$this->lock->refresh(); $seen[] = $media->id; ++$current;
-				if ($media->isRepost($accountUsername)) { $this->posts->setDisplayEnabled($media->id,false); ++$result->skipped; continue; }
 				if ((! $settings['show_reels'] && 'REELS' === $media->productType) || (! $settings['show_carousels'] && 'CAROUSEL_ALBUM' === $media->mediaType)) { $this->posts->setDisplayEnabled($media->id, false); ++$result->skipped; continue; }
 				try { $this->syncMedia($media, $result, $settings, $forceRefresh); } catch (\Throwable $e) { ++$result->failed; $result->errors[] = $media->id . ': ' . sanitize_text_field($e->getMessage()); $this->logs->add('error', 'Instagram media synchronization failed.', array('media_id'=>$media->id,'error'=>$e->getMessage())); }
 				set_transient('lif_sync_progress', array('phase'=>'media','current'=>$current,'total'=>$result->fetched,'percent'=>10 + (int) floor(80 * $current / max(1,$result->fetched))), 20 * MINUTE_IN_SECONDS);
 			}
 			$result->complete = (bool) $batch['complete'];
-			if ($result->complete) { $result->deleted = $this->posts->markMissing($seen, (string) $batch['oldest'], (string) $settings['deleted_behavior']); }
+			if ($result->complete) { $result->deleted = $this->posts->markMissing($seen, (string) $batch['oldest'], (string) $settings['deleted_behavior'], (int) $settings['missing_grace_hours']); }
 			if ($result->complete && 0 === $result->failed) { $pruned=$this->posts->pruneExcess((int)$settings['post_limit'],(int)$settings['excess_retention_days']);$result->pruned=$pruned['posts'];if($pruned['posts']>0){$this->logs->add('info','Excess Instagram posts pruned.',$pruned);} }
 			if ($forceRefresh && $result->complete && 0 === $result->failed) { update_option(Config::APPLIED_REFRESH_GENERATION_OPTION, $refreshGeneration, false); }
 			FeedRenderer::clearCache();
-			$status = array('last_run' => time(), 'last_success' => time(), 'result' => $result->toArray(), 'duration' => round(microtime(true)-$started, 3)); update_option(Config::STATUS_OPTION, $status, false);
+			$status = (array) get_option(Config::STATUS_OPTION, array());
+			$status['last_run'] = time(); $status['last_success'] = time(); $status['result'] = $result->toArray();
+			$status['duration'] = round(microtime(true)-$started, 3); $status['successful_syncs'] = (int) ($status['successful_syncs'] ?? 0) + 1;
+			unset($status['last_error'], $status['last_failure']);
+			update_option(Config::STATUS_OPTION, $status, false);
 			$this->logs->add('info', 'Instagram synchronization completed.', $result->toArray());
 			set_transient('lif_sync_progress', array('phase'=>'complete','current'=>$result->fetched,'total'=>$result->fetched,'percent'=>100), 5 * MINUTE_IN_SECONDS);
 		} catch (\Throwable $e) {
