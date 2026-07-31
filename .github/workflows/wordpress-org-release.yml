@@ -1,0 +1,64 @@
+name: Publish approved WordPress.org release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing SemVer tag, for example v2.1.0
+        required: true
+      confirm_approved:
+        description: Type WORDPRESS_ORG_APPROVED after the plugin has been approved
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wordpress-org-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: wordpress-org
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag }}
+      - name: Verify release
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${{ inputs.confirm_approved }}" = "WORDPRESS_ORG_APPROVED"
+          [[ "${{ inputs.tag }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${{ inputs.tag }}"
+          version="${version#v}"
+          grep -q "^Stable tag: $version$" readme.txt
+          grep -q "^ \\* Version: $version$" vemoro-socialfeed.php
+      - name: Test JavaScript
+        run: |
+          for test_file in tests/js/*.test.js; do node "$test_file"; done
+      - name: Build SVN working copy
+        env:
+          WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
+          WPORG_PASSWORD: ${{ secrets.WPORG_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${{ inputs.tag }}"
+          version="${version#v}"
+          svn checkout --depth=immediates \
+            --username "$WPORG_USERNAME" --password "$WPORG_PASSWORD" --non-interactive \
+            https://plugins.svn.wordpress.org/vemoro-socialfeed "$RUNNER_TEMP/wporg"
+          svn update "$RUNNER_TEMP/wporg/trunk" "$RUNNER_TEMP/wporg/assets"
+          mkdir -p "$RUNNER_TEMP/package"
+          rsync -a --delete --exclude-from=.distignore ./ "$RUNNER_TEMP/package/"
+          rsync -a --delete "$RUNNER_TEMP/package/" "$RUNNER_TEMP/wporg/trunk/"
+          rsync -a --delete wordpress-org-assets/ "$RUNNER_TEMP/wporg/assets/"
+          cd "$RUNNER_TEMP/wporg"
+          svn add --force trunk assets
+          svn status | awk '$1 == "!" {sub(/^! +/, ""); print}' | while IFS= read -r missing; do svn rm "$missing"; done
+          svn copy trunk "tags/$version"
+          svn commit --username "$WPORG_USERNAME" --password "$WPORG_PASSWORD" --non-interactive \
+            -m "Release $version from Git tag ${{ inputs.tag }} (${{ github.sha }})"

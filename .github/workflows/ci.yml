@@ -31,13 +31,99 @@ jobs:
           node-version: 22
       - run: for test in tests/js/*.test.js; do node "$test"; done
 
+  phpunit:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wordpress_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    strategy:
+      matrix:
+        include:
+          - { wordpress: '6.5', php: '8.1' }
+          - { wordpress: '6.7', php: '8.2' }
+          - { wordpress: '6.9', php: '8.3' }
+          - { wordpress: '7.0', php: '8.4' }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mysqli
+          tools: composer
+      - run: composer install --no-interaction --prefer-dist
+      - name: Install current WordPress test library
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://wordpress.org/wordpress-${{ matrix.wordpress }}.tar.gz" -o /tmp/wordpress.tar.gz
+          mkdir -p /tmp/wordpress
+          tar -xzf /tmp/wordpress.tar.gz --strip-components=1 -C /tmp/wordpress
+          svn export --quiet "https://develop.svn.wordpress.org/tags/${{ matrix.wordpress }}/tests/phpunit" /tmp/wordpress-tests-lib
+          svn cat "https://develop.svn.wordpress.org/tags/${{ matrix.wordpress }}/wp-tests-config-sample.php" > /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/youremptytestdbnamehere/wordpress_test/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourusernamehere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s/yourpasswordhere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s|localhost|127.0.0.1|" /tmp/wordpress-tests-lib/wp-tests-config.php
+          sed -i "s|^define( 'ABSPATH'.*|define( 'ABSPATH', '/tmp/wordpress/' );|" /tmp/wordpress-tests-lib/wp-tests-config.php
+      - run: vendor/bin/phpunit --configuration phpunit.xml.dist
+        env:
+          WP_TESTS_DIR: /tmp/wordpress-tests-lib
+
   package:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: git archive --format=zip --prefix=local-instagram-feed/ -o vemoro-socialfeed-for-wp.zip HEAD
+      - name: Build reproducible WordPress.org package
+        shell: pwsh
+        run: ./tools/build-release.ps1 -OutputDirectory artifacts
+      - name: Extract release package
+        run: unzip artifacts/vemoro-socialfeed-*.zip -d release-check
+      - name: Run official Plugin Check
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: release-check/vemoro-socialfeed
+          include-experimental: false
       - uses: actions/upload-artifact@v4
         with:
           name: vemoro-socialfeed-for-wp
-          path: vemoro-socialfeed-for-wp.zip
+          path: |
+            artifacts/vemoro-socialfeed-*.zip
+            artifacts/vemoro-socialfeed-*.zip.sha256
 
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          tools: composer
+      - run: composer audit --locked --no-interaction
+      - uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: true
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          artifact-name: vemoro-socialfeed.spdx.json
+      - uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          artifact-name: vemoro-socialfeed.cdx.json

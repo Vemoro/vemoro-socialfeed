@@ -1,17 +1,20 @@
-=== Vemoro SocialFeed for WP ===
-Contributors: site-owner
+=== Vemoro SocialFeed ===
+Contributors: vemoro
 Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.0.3
+Stable tag: 2.1.0
+Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
 
 == Description ==
 
-Vemoro SocialFeed for WP uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
+Vemoro SocialFeed uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
+
+The recommended login uses the external Vemoro connection service at connect.vemoro.de. When the administrator deliberately starts a connection, WordPress transmits the WordPress callback URL, a random security state, plugin version and site URL to that service. The service communicates with Instagram, keeps an OAuth flow for at most ten minutes and an encrypted one-time grant for at most two minutes. It does not retain the permanent Instagram token. Service privacy information: https://vemoro.de/socialfeed/datenschutz/ . Terms: https://vemoro.de/nutzungsbedingungen/ . Data deletion instructions: https://vemoro.de/datenloeschung/ .
 
 Visitors do not connect to Meta on ordinary page views. Only the website operator's server communicates with the Instagram API during OAuth, synchronization, and token maintenance. Temporary API or token failures never trigger immediate deletion. A confirmed permanent disconnect removes the token and all API-derived Platform Data; plugin-owned media are deleted only when they are not referenced elsewhere in WordPress.
 
@@ -25,8 +28,14 @@ See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and b
 
 1. Activate the plugin.
 2. Keep the recommended Vemoro Login selected, or configure an own Meta app in expert mode.
-3. Connect a Business or Creator account.
-4. Run the first synchronization and add the block or shortcode.
+3. Review and accept the linked Vemoro connection service terms and acknowledge its privacy notice.
+4. Connect a Business or Creator account.
+5. Run the first synchronization and add the block or shortcode.
+
+== Upgrade Notice ==
+
+= 2.1.0 =
+The folder changes to `vemoro-socialfeed`. Deactivate 2.0.3 without uninstalling it, replace the old folder with the new one and reactivate. Existing `lif_*` data and integrations remain unchanged. Keep uninstall data deletion disabled.
 
 == Voluntary support ==
 
@@ -37,6 +46,13 @@ All signed-in users see the support notice immediately in the WordPress backend.
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.1.0 =
+* Migrates the WordPress.org distribution slug, main file, text domain and language files to `vemoro-socialfeed`.
+* Preserves all `lif_*` data, the legacy block, shortcode, theme function and WP-CLI command.
+* Adds WordPress Privacy Policy Guide content and fully discloses the hosted OAuth service, data transfer, privacy information and terms.
+* Requires explicit, server-validated acceptance of the linked terms before a hosted Vemoro Login starts.
+* Prepares the official WordPress.org contributor, donation and upgrade metadata.
 
 = 2.0.3 =
 * Adds support@vemoro.de to the backend notice, plugin administration area and documentation.
