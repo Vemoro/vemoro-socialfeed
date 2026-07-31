@@ -14,5 +14,8 @@
     "test": "phpunit",
     "lint": "phpcs --standard=phpcs.xml.dist"
   },
-  "config": { "allow-plugins": { "dealerdirect/phpcodesniffer-composer-installer": true } }
+  "config": {
+    "platform": { "php": "8.1.0" },
+    "allow-plugins": { "dealerdirect/phpcodesniffer-composer-installer": true }
+  }
 }
