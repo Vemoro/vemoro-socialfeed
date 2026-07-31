@@ -1,6 +1,6 @@
 msgid ""
 msgstr ""
-"Project-Id-Version: Vemoro SocialFeed for WP 2.0.3\n"
+"Project-Id-Version: Vemoro SocialFeed for WP 2.1.0\n"
 "Language: de_DE\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -44,6 +44,21 @@ msgstr "Verbindung trennen und Instagram-Daten löschen"
 
 msgid "Reconnect with Instagram"
 msgstr "Erneut mit Instagram verbinden"
+
+msgid "I accept the"
+msgstr "Ich akzeptiere die"
+
+msgid "Terms of Use"
+msgstr "Nutzungsbedingungen"
+
+msgid "and acknowledge the"
+msgstr "und nehme die"
+
+msgid "Privacy Notice"
+msgstr "Datenschutzhinweise zur Kenntnis"
+
+msgid "The Terms of Use must be accepted before starting the Vemoro Login."
+msgstr "Vor dem Start des Vemoro Logins müssen die Nutzungsbedingungen akzeptiert werden."
 
 msgid "Help keep Vemoro SocialFeed available"
 msgstr "Hilf mit, Vemoro SocialFeed dauerhaft bereitzustellen"

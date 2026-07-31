@@ -1,12 +1,12 @@
 {
   "apiVersion": 3,
   "name": "local-instagram-feed/feed",
-  "version": "2.0.3",
+  "version": "2.1.0",
   "title": "Lokaler Instagram-Feed (Kompatibilität)",
   "category": "widgets",
   "icon": "instagram",
   "description": "Zeigt lokal synchronisierte Instagram-Beiträge an.",
-  "textdomain": "local-instagram-feed",
+  "textdomain": "vemoro-socialfeed",
   "editorScript": "lif-block-editor",
   "editorStyle": "lif-block-editor",
   "attributes": {
