@@ -269,6 +269,10 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ## Changelog
 
+### 2.1.3
+
+- Verbindungsschaltflächen auf die normale WordPress-Buttonhöhe vereinheitlicht und sauber ausgerichtet.
+
 ### 2.1.2
 
 - Versionierte Zustimmung zu Nutzungsbedingungen und Datenschutzhinweisen dauerhaft in den WordPress-Einstellungen gespeichert.
