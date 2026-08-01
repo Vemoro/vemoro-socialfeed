@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Vemoro SocialFeed
  * Description: Synchronisiert Instagram-Medien serverseitig und gibt Inhalte und Medien datenschutzfreundlich aus WordPress aus.
- * Version: 2.1.4
+ * Version: 2.1.5
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: Vemoro
@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'LIF_VERSION', '2.1.4' );
+define( 'LIF_VERSION', '2.1.5' );
 define( 'LIF_PLUGIN_FILE', __FILE__ );
 define( 'LIF_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'LIF_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

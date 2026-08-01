@@ -36,11 +36,18 @@ final class LogRepository {
 	/** @param mixed $value @return mixed */
 	private function redact( mixed $value ): mixed {
 		if ( ! is_array( $value ) ) {
-			return is_scalar( $value ) ? sanitize_text_field( (string) $value ) : null; }
+			if ( ! is_scalar( $value ) ) {
+				return null;
+			}
+			$clean = sanitize_text_field( (string) $value );
+			$clean = (string) preg_replace( '/((?:access_token|refresh_token|client_secret|authorization|oauth_code|code_verifier)=)[^&\\s]+/i', '$1[redacted]', $clean );
+			$clean = (string) preg_replace( '/Bearer\\s+[A-Za-z0-9._~-]+/i', 'Bearer [redacted]', $clean );
+			return $clean;
+		}
 		$out = array();
 		foreach ( $value as $key => $item ) {
 			$name        = strtolower( (string) $key );
-			$out[ $key ] = preg_match( '/token|secret|authorization|code/', $name ) ? '[redacted]' : $this->redact( $item );
+			$out[ $key ] = preg_match( '/(^|_)(access_?token|refresh_?token|token|secret|authorization|oauth_?code|code_?verifier|grant)(_|$)/', $name ) ? '[redacted]' : $this->redact( $item );
 		}
 		return $out;
 	}

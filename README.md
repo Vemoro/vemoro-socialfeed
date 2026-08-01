@@ -269,6 +269,11 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ## Changelog
 
+### 2.1.5
+
+- Fehlerprotokolle um Phase, API-Operation, HTTP-Status, Meta-Fehlercode und Meta-Request-ID ergänzt, ohne Token oder Queryparameter zu speichern.
+- Eine dauerhafte Warnung erscheint erst, wenn derselbe Fehler in zwei aufeinanderfolgenden Prüfungen oder Synchronisierungen auftritt; ein erfolgreicher Lauf setzt sie zurück.
+
 ### 2.1.4
 
 - Profil- und Medienabfragen verwenden die an das Zugriffstoken gebundenen `/me`-Endpunkte der Instagram API.

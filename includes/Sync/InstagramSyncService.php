@@ -4,8 +4,10 @@ namespace LocalInstagramFeed\Sync;
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
 use LocalInstagramFeed\Api\InstagramApiClient;
+use LocalInstagramFeed\Api\ApiException;
 use LocalInstagramFeed\Api\TokenService;
 use LocalInstagramFeed\Config;
+use LocalInstagramFeed\Diagnostics\FailureTracker;
 use LocalInstagramFeed\Domain\Media;
 use LocalInstagramFeed\Domain\SyncResult;
 use LocalInstagramFeed\Frontend\FeedRenderer;
@@ -22,7 +24,8 @@ final class InstagramSyncService {
 			$result->failed   = 1;
 			return $result; }
 		$started = microtime( true );
-		$this->logs->add( 'info', 'Instagram synchronization started.' );
+		$phase   = 'starting';
+		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => LIF_VERSION ) );
 		set_transient(
 			'lif_sync_progress',
 			array(
@@ -34,10 +37,13 @@ final class InstagramSyncService {
 			20 * MINUTE_IN_SECONDS
 		);
 		try {
+			$phase = 'configuration';
 			if ( ! $this->tokens->isConnected() ) {
 				throw new \RuntimeException( __( 'No Instagram account is connected.', 'vemoro-socialfeed' ) ); }
+			$phase = 'token_refresh';
 			if ( ! $this->tokens->refresh() ) {
 				throw new \RuntimeException( __( 'The Instagram token could not be refreshed.', 'vemoro-socialfeed' ) ); }
+			$phase                 = 'profile';
 			$settings              = Config::settings();
 			$profile               = $this->api->profile();
 			$accountUsername       = sanitize_text_field( (string) ( $profile['username'] ?? '' ) );
@@ -50,6 +56,7 @@ final class InstagramSyncService {
 			$limit               = (int) $settings['post_limit'];
 			if ( $forceRefresh ) {
 				$limit = max( $limit, min( 100, $this->posts->count() ) ); }
+			$phase           = 'media_list';
 			$batch           = $this->api->media( $limit, (int) $settings['max_api_pages'] );
 			$result->fetched = count( $batch['items'] );
 			$seen            = array();
@@ -65,6 +72,7 @@ final class InstagramSyncService {
 				20 * MINUTE_IN_SECONDS
 			);
 			foreach ( $batch['items'] as $media ) {
+				$phase = 'media_processing';
 				$this->lock->refresh();
 				$seen[] = $media->id;
 				++$current;
@@ -108,13 +116,12 @@ final class InstagramSyncService {
 			if ( $forceRefresh && $result->complete && 0 === $result->failed ) {
 				update_option( Config::APPLIED_REFRESH_GENERATION_OPTION, $refreshGeneration, false ); }
 			FeedRenderer::clearCache();
-			$status                     = (array) get_option( Config::STATUS_OPTION, array() );
+			$status                     = FailureTracker::clear( (array) get_option( Config::STATUS_OPTION, array() ) );
 			$status['last_run']         = time();
 			$status['last_success']     = time();
 			$status['result']           = $result->toArray();
 			$status['duration']         = round( microtime( true ) - $started, 3 );
 			$status['successful_syncs'] = (int) ( $status['successful_syncs'] ?? 0 ) + 1;
-			unset( $status['last_error'], $status['last_failure'] );
 			update_option( Config::STATUS_OPTION, $status, false );
 			$this->logs->add( 'info', 'Instagram synchronization completed.', $result->toArray() );
 			set_transient(
@@ -130,12 +137,16 @@ final class InstagramSyncService {
 		} catch ( \Throwable $e ) {
 			++$result->failed;
 			$result->errors[]       = sanitize_text_field( $e->getMessage() );
-			$status                 = (array) get_option( Config::STATUS_OPTION, array() );
+			$status                 = FailureTracker::record( (array) get_option( Config::STATUS_OPTION, array() ), $e->getMessage() );
 			$status['last_run']     = time();
-			$status['last_failure'] = time();
-			$status['last_error']   = sanitize_text_field( $e->getMessage() );
 			update_option( Config::STATUS_OPTION, $status, false );
-			$this->logs->add( 'error', 'Instagram synchronization aborted.', array( 'error' => $e->getMessage() ) );
+			$context = $e instanceof ApiException ? $e->diagnosticContext( $phase ) : array(
+				'phase' => $phase,
+				'error' => $e->getMessage(),
+				'type'  => get_class( $e ),
+			);
+			$context['consecutive_failures'] = (int) $status['consecutive_failures'];
+			$this->logs->add( 'error', 'Instagram synchronization aborted.', $context );
 			set_transient(
 				'lif_sync_progress',
 				array(

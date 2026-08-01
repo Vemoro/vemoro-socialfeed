@@ -1,11 +1,13 @@
 <?php
 namespace LocalInstagramFeed\Admin;
 
+use LocalInstagramFeed\Api\ApiException;
 use LocalInstagramFeed\Api\InstagramApiClient;
 use LocalInstagramFeed\Api\OAuthService;
 use LocalInstagramFeed\Api\TokenService;
 use LocalInstagramFeed\Config;
 use LocalInstagramFeed\CronManager;
+use LocalInstagramFeed\Diagnostics\FailureTracker;
 use LocalInstagramFeed\Frontend\FeedRenderer;
 use LocalInstagramFeed\Repository\LogRepository;
 use LocalInstagramFeed\Repository\PostRepository;
@@ -334,7 +336,9 @@ final class AdminPage {
 		$upload  = wp_upload_dir();
 		$next    = CronManager::nextScheduled();
 		$orphans = $this->posts->orphanedOwnedMediaSummary();
+		$status  = (array) get_option( Config::STATUS_OPTION, array() );
 		$report  = array(
+			'Plugin'                  => LIF_VERSION,
 			'WordPress'               => get_bloginfo( 'version' ),
 			'PHP'                     => PHP_VERSION,
 			'cURL'                    => extension_loaded( 'curl' ) ? 'yes' : 'no',
@@ -344,6 +348,8 @@ final class AdminPage {
 			'DISABLE_WP_CRON'         => defined( 'DISABLE_WP_CRON' ) && DISABLE_WP_CRON ? 'yes' : 'no',
 			'Next cron'               => $next ? gmdate( DATE_ATOM, $next ) : 'none',
 			'Connected'               => $this->tokens->isConnected() ? 'yes' : 'no',
+			'Consecutive failures'     => (string) (int) ( $status['consecutive_failures'] ?? 0 ),
+			'Last failed run'          => ! empty( $status['last_failure'] ) ? gmdate( DATE_ATOM, (int) $status['last_failure'] ) : 'none',
 			'Local records'           => (string) $this->posts->count(),
 			'Unassigned plugin media' => (string) $orphans['candidates'],
 			'Potential cleanup size'  => size_format( $orphans['bytes'], 2 ),
@@ -351,9 +357,11 @@ final class AdminPage {
 		echo '<div class="lif-card"><h2>' . esc_html__( 'Diagnostics', 'vemoro-socialfeed' ) . '</h2><textarea class="large-text code" rows="14" readonly>' . esc_textarea( implode( "\n", array_map( static fn( $k, $v )=>$k . ': ' . $v, array_keys( $report ), $report ) ) ) . '</textarea><p><button id="lif-clear-cache" class="button">' . esc_html__( 'Clear cache', 'vemoro-socialfeed' ) . '</button></p></div>'; }
 
 	private function logs(): void {
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Recent logs', 'vemoro-socialfeed' ) . '</h2><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Time', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Level', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Message', 'vemoro-socialfeed' ) . '</th></tr></thead><tbody>';
+		echo '<div class="lif-card"><h2>' . esc_html__( 'Recent logs', 'vemoro-socialfeed' ) . '</h2><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Time', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Level', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Message', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Details', 'vemoro-socialfeed' ) . '</th></tr></thead><tbody>';
 		foreach ( $this->logs->latest( 100 ) as $row ) {
-			echo '<tr><td>' . esc_html( $row->created_at ) . '</td><td>' . esc_html( $row->level ) . '</td><td>' . esc_html( $row->message ) . '</td></tr>';
+			$context = json_decode( (string) $row->context, true );
+			$details = is_array( $context ) && $context ? (string) wp_json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : '';
+			echo '<tr><td>' . esc_html( $row->created_at ) . '</td><td>' . esc_html( $row->level ) . '</td><td>' . esc_html( $row->message ) . '</td><td>' . ( $details ? '<details><summary>' . esc_html__( 'Show details', 'vemoro-socialfeed' ) . '</summary><pre class="lif-log-context">' . esc_html( $details ) . '</pre></details>' : '&mdash;' ) . '</td></tr>';
 		} echo '</tbody></table></div>'; }
 
 	public function connect(): void {
@@ -414,8 +422,19 @@ final class AdminPage {
 			$meta             = (array) get_option( Config::TOKEN_OPTION, array() );
 			$meta['username'] = sanitize_text_field( (string) ( $profile['username'] ?? '' ) );
 			update_option( Config::TOKEN_OPTION, $meta, false );
+			update_option( Config::STATUS_OPTION, FailureTracker::clear( (array) get_option( Config::STATUS_OPTION, array() ) ), false );
+			$this->logs->add( 'info', 'Instagram connection check completed.', array( 'operation' => 'profile' ) );
 			$this->redirectNotice( __( 'Connection is working.', 'vemoro-socialfeed' ) );
 		} catch ( \Throwable $e ) {
+			$status = FailureTracker::record( (array) get_option( Config::STATUS_OPTION, array() ), $e->getMessage() );
+			update_option( Config::STATUS_OPTION, $status, false );
+			$context = $e instanceof ApiException ? $e->diagnosticContext( 'connection_check' ) : array(
+				'phase' => 'connection_check',
+				'error' => $e->getMessage(),
+				'type' => get_class( $e ),
+			);
+			$context['consecutive_failures'] = (int) $status['consecutive_failures'];
+			$this->logs->add( 'error', 'Instagram connection check failed.', $context );
 			$this->redirectNotice( $e->getMessage(), 'error' );} }
 	public function cleanupOrphanedMedia(): void {
 		$this->guard( 'lif_cleanup_orphaned_media' );

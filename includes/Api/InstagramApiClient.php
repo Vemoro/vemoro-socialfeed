@@ -32,7 +32,7 @@ final class InstagramApiClient {
 				break;
 			}
 			++$pages;
-			$body = $this->request( $url );
+			$body = $this->request( $url, 'media_list' );
 			foreach ( (array) ( $body['data'] ?? array() ) as $row ) {
 				if ( ! is_array( $row ) ) {
 					continue; }
@@ -74,11 +74,11 @@ final class InstagramApiClient {
 	public function profile(): array {
 		$version = (string) Config::settings()['api_version'];
 		$url     = self::GRAPH_HOST . '/' . rawurlencode( $version ) . '/me?fields=user_id,username';
-		return $this->request( $url );
+		return $this->request( $url, 'profile' );
 	}
 
 	/** @return array<string,mixed> */
-	private function request( string $url ): array {
+	private function request( string $url, string $operation ): array {
 		$response = wp_remote_get(
 			$url,
 			array(
@@ -92,17 +92,20 @@ final class InstagramApiClient {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			throw new ApiException( sanitize_text_field( $response->get_error_message() ), 0, 0, true ); }
+			throw new ApiException( sanitize_text_field( $response->get_error_message() ), 0, 0, true, $operation ); }
 		$status = wp_remote_retrieve_response_code( $response );
 		$raw    = wp_remote_retrieve_body( $response );
 		$data   = json_decode( $raw, true );
+		$requestId = sanitize_text_field( (string) wp_remote_retrieve_header( $response, 'x-fb-request-id' ) );
 		if ( ! is_array( $data ) ) {
-			throw new ApiException( __( 'Instagram returned invalid JSON.', 'vemoro-socialfeed' ), $status, 0, $status >= 500 ); }
+			throw new ApiException( __( 'Instagram returned invalid JSON.', 'vemoro-socialfeed' ), $status, 0, $status >= 500, $operation, 0, $requestId ); }
 		if ( $status < 200 || $status >= 300 || isset( $data['error'] ) ) {
 			$error   = is_array( $data['error'] ?? null ) ? $data['error'] : array();
 			$code    = (int) ( $error['code'] ?? 0 );
+			$subcode = (int) ( $error['error_subcode'] ?? 0 );
+			$type    = sanitize_text_field( (string) ( $error['type'] ?? '' ) );
 			$message = sanitize_text_field( (string) ( $error['message'] ?? __( 'Instagram API request failed.', 'vemoro-socialfeed' ) ) );
-			throw new ApiException( $message, $status, $code, 429 === $status || $status >= 500 || in_array( $code, array( 1, 2, 4, 17, 32, 613 ), true ) );
+			throw new ApiException( $message, $status, $code, 429 === $status || $status >= 500 || in_array( $code, array( 1, 2, 4, 17, 32, 613 ), true ), $operation, $subcode, $requestId, $type );
 		}
 		return $data;
 	}
