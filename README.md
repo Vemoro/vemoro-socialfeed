@@ -19,12 +19,15 @@ Das Plugin benötigt weder Composer noch npm zur Laufzeit. Die in `composer.json
 
 ## Installation
 
-1. Den Ordner `local-instagram-feed` nach `wp-content/plugins/` kopieren.
+1. Den Ordner `vemoro-socialfeed` nach `wp-content/plugins/` kopieren.
 2. „Vemoro SocialFeed for WP“ in WordPress aktivieren.
-3. Im Adminmenü „Vemoro Login“ auswählen und „Mit Instagram verbinden“ anklicken.
+3. Im Adminmenü „Vemoro Login“ auswählen, Nutzungsbedingungen und Datenschutzhinweise öffnen und deren Kenntnisnahme bestätigen.
+4. „Mit Instagram verbinden“ anklicken.
 4. Nach der Rückkehr zu WordPress die erste Synchronisierung starten.
 
 Der Vemoro Login benötigt keine App-ID und kein App-Secret in WordPress. Der zentrale Dienst unter `connect.vemoro.de` besitzt eine feste Meta-Callback-URL und gibt das Long-Lived Token über einen verschlüsselten, kurzlebigen Einmalcode an WordPress zurück. Das dauerhafte Token liegt anschließend ausschließlich verschlüsselt in der WordPress-Installation.
+
+Beim bewusst gestarteten Login übermittelt WordPress Callback-URL, zufälligen Sicherheitsstatus, Plugin-Version und Website-URL an den Vemoro-Verbindungsdienst. Der Dienst hält den OAuth-Vorgang höchstens zehn Minuten und den verschlüsselten Einmal-Grant höchstens zwei Minuten vor. Datenschutzhinweise stehen unter [vemoro.de/socialfeed/datenschutz](https://vemoro.de/socialfeed/datenschutz/), die Nutzungsbedingungen unter [vemoro.de/nutzungsbedingungen](https://vemoro.de/nutzungsbedingungen/) und die Datenlöschungsanleitung unter [vemoro.de/datenloeschung](https://vemoro.de/datenloeschung/).
 
 Das vorhandene Smash-Balloon-Plugin wird weder verändert noch migriert und kann parallel installiert bleiben.
 
@@ -45,7 +48,7 @@ Wer eine eigene Meta-App betreiben möchte, wählt den Expertenmodus. Als Redire
 https://example.org/wp-admin/admin.php
 ```
 
-Die Callback-URI enthÃ¤lt bewusst keine Query-Parameter, da Instagram diese beim OAuth-RÃ¼cksprung entfernt. Produktion verlangt HTTPS. HTTP wird nur akzeptiert, wenn WordPress die Umgebung als `local` ausweist oder ein Loopback-Host verwendet wird.
+Die Callback-URI enthält bewusst keine Query-Parameter, da Instagram diese beim OAuth-Rücksprung entfernt. Produktion verlangt HTTPS. HTTP wird nur akzeptiert, wenn WordPress die Umgebung als `local` ausweist oder ein Loopback-Host verwendet wird.
 
 ### Secrets über wp-config.php
 
@@ -213,7 +216,7 @@ node tests/js/frontend-row-height.test.js
 Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus einem markierten Commit erstellen:
 
 ```bash
-git archive --format=zip --prefix=local-instagram-feed/ -o local-instagram-feed-1.0.30.zip HEAD
+git archive --format=zip --prefix=vemoro-socialfeed/ -o vemoro-socialfeed-2.1.0.zip HEAD
 ```
 
 ## Fehlerbehebung
@@ -234,6 +237,20 @@ Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen de
 
 Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt ausschließlich plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
 
+## Upgrade von 2.0.3
+
+Die WordPress.org-Ausgabe verwendet ab 2.1.0 den Ordner und die Hauptdatei `vemoro-socialfeed`. Alle Optionen, Tabellen, CPTs, Metadaten und Attachments behalten absichtlich ihre `lif_*`-Kennungen. Ebenso bleiben `local-instagram-feed/feed`, `[local_instagram_feed]`, `lif_render_feed()` und `wp local-instagram-feed` als kompatible Aliase erhalten.
+
+Bei einer bisher manuell installierten Version:
+
+1. Sicherung der Datenbank und Uploads erstellen.
+2. Das alte Plugin nur deaktivieren, nicht deinstallieren.
+3. Sicherstellen, dass „Alle Plugin-Daten bei Deinstallation löschen“ deaktiviert ist.
+4. Den alten Pluginordner entfernen und den neuen Ordner `vemoro-socialfeed` installieren.
+5. Vemoro SocialFeed aktivieren und Verbindung, Datensatzanzahl sowie einen vorhandenen Feed prüfen.
+
+Die Daten werden dabei nicht umbenannt oder neu importiert. Ein paralleles Aktivieren beider Ordner ist nicht zulässig, da beide dieselben Klassen und Daten verwenden.
+
 ## Grenzen
 
 - Genau ein professionelles Instagram-Konto pro WordPress-Installation
@@ -251,6 +268,42 @@ Alle angemeldeten Benutzer sehen den entsprechenden Hinweis unmittelbar im WordP
 Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vemoro.de) gesendet werden. Die Adresse wird sowohl im Backend-Hinweis als auch in der Plugin-Verwaltung angezeigt.
 
 ## Changelog
+
+### 2.1.5
+
+- Fehlerprotokolle um Phase, API-Operation, HTTP-Status, Meta-Fehlercode und Meta-Request-ID ergänzt, ohne Token oder Queryparameter zu speichern.
+- Eine dauerhafte Warnung erscheint erst, wenn derselbe Fehler in zwei aufeinanderfolgenden Prüfungen oder Synchronisierungen auftritt; ein erfolgreicher Lauf setzt sie zurück.
+
+### 2.1.4
+
+- Profil- und Medienabfragen verwenden die an das Zugriffstoken gebundenen `/me`-Endpunkte der Instagram API.
+
+### 2.1.3
+
+- Verbindungsschaltflächen auf die normale WordPress-Buttonhöhe vereinheitlicht und sauber ausgerichtet.
+
+### 2.1.2
+
+- Versionierte Zustimmung zu Nutzungsbedingungen und Datenschutzhinweisen dauerhaft in den WordPress-Einstellungen gespeichert.
+- Zustimmung direkt bei der Auswahl „Vemoro Login“ platziert.
+- Zugangsdaten der eigenen Meta-App werden erst nach Auswahl des Expertenmodus aufgeklappt.
+- Einmalige OAuth-Grants werden als JSON übertragen; der Broker bleibt während des Übergangs mit formularbasierten Plugin-Versionen kompatibel.
+
+### 2.1.1
+
+- Fehlende Synchronisierungspläne werden nach der Initialisierung von WordPress beziehungsweise Action Scheduler automatisch repariert.
+- Ein vorhandener WP-Cron-Ersatztermin wird auch bei installiertem Action Scheduler korrekt erkannt und angezeigt.
+- Ist Action Scheduler zwar geladen, aber noch nicht einsatzbereit, bleibt WP-Cron als sicherer Rückfall aktiv.
+- OAuth-Rücksprünge des Vemoro-Verbindungsdienstes sind unabhängig von alten WordPress-Admin-Seiten-Slugs.
+
+### 2.1.0
+
+- WordPress.org-Slug, Pluginordner, Hauptdatei, Textdomain und Sprachdateien auf `vemoro-socialfeed` migriert.
+- Bestehende `lif_*`-Daten und alte Block-, Shortcode-, Theme- sowie WP-CLI-Schnittstellen bleiben kompatibel.
+- Vorschlag für die WordPress-Datenschutzerklärung über `wp_add_privacy_policy_content()` ergänzt.
+- Externen Vemoro-OAuth-Dienst, übertragene Daten, Laufzeiten, Datenschutzseite und Nutzungsbedingungen vollständig dokumentiert.
+- Vor jedem Vemoro Login eine serverseitig geprüfte Zustimmung zu den verlinkten Nutzungsbedingungen ergänzt.
+- WordPress.org-Metadaten für Contributor, Donate-Link und Upgrade ergänzt.
 
 ### 2.0.3
 
@@ -399,12 +452,12 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ### 1.0.4
 
-- DarstellungsÃ¤nderungen lÃ¶sen beim nÃ¤chsten Sync eine vollstÃ¤ndige Aktualisierung der lokalen BeitrÃ¤ge aus.
-- Der Datenschutz-Tab kann alle synchronisierten BeitrÃ¤ge, Zuordnungen und nicht anderweitig verwendeten Plugin-Medien sicher lÃ¶schen.
+- Darstellungsänderungen lösen beim nächsten Sync eine vollständige Aktualisierung der lokalen Beiträge aus.
+- Der Datenschutz-Tab kann alle synchronisierten Beiträge, Zuordnungen und nicht anderweitig verwendeten Plugin-Medien sicher löschen.
 
 ### 1.0.3
 
-- Queryfreie OAuth-Callback-URI eingefÃ¼hrt, damit Autorisierungsanfrage und Token-Austausch dieselbe URI verwenden.
+- Queryfreie OAuth-Callback-URI eingeführt, damit Autorisierungsanfrage und Token-Austausch dieselbe URI verwenden.
 
 ### 1.0.2
 

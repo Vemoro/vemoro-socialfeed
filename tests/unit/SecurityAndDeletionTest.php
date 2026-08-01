@@ -12,7 +12,12 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$this->assertFalse($oauth->validateState(2,$state));$this->assertTrue($oauth->validateState(1,$state));$this->assertFalse($oauth->hasPendingState(1));$this->assertFalse($oauth->validateState(1,$state));
 	}
 	public function test_oauth_redirect_uri_has_no_query_or_fragment(): void {
-		$old=get_option(Config::OPTION,array());$settings=Config::defaults();$settings['redirect_uri']=admin_url('admin.php?page=local-instagram-feed&lif_action=oauth_callback#fragment');update_option(Config::OPTION,$settings,false);
+		$old=get_option(Config::OPTION,array());$settings=Config::defaults();$settings['redirect_uri']=admin_url('admin.php?page=vemoro-socialfeed&lif_action=oauth_callback#fragment');update_option(Config::OPTION,$settings,false);
+		$this->assertSame(admin_url('admin.php'),Config::redirectUri());
+		update_option(Config::OPTION,$old,false);
+	}
+	public function test_hosted_oauth_ignores_a_legacy_configured_admin_page(): void {
+		$old=get_option(Config::OPTION,array());$settings=Config::defaults();$settings['oauth_provider']='vemoro';$settings['redirect_uri']=admin_url('admin.php?page=local-instagram-feed');update_option(Config::OPTION,$settings,false);
 		$this->assertSame(admin_url('admin.php'),Config::redirectUri());
 		update_option(Config::OPTION,$old,false);
 	}
@@ -77,9 +82,9 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$html=(new FeedRenderer(new PostRepository()))->render(array('post_id'=>$post));
 		$this->assertStringContainsString('lif-feed-empty',$html);
 	}
-	public function test_caption_is_truncated_and_escaped(): void {
+	public function test_caption_is_fully_available_for_expansion_and_escaped(): void {
 		$post=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish'));foreach(array('_lif_media_id'=>'escape','_lif_media_type'=>'IMAGE','_lif_status'=>'active','_lif_caption'=>'<script>alert(1)</script> plus text','_lif_timestamp'=>'2026-01-01T00:00:00+0000') as $key=>$value){update_post_meta($post,$key,$value);}
-		$html=(new FeedRenderer(new PostRepository()))->render(array('post_id'=>$post,'caption_length'=>18,'show_caption'=>true));$this->assertStringNotContainsString('<script>',$html);$this->assertStringContainsString('&lt;script&gt;', $html);$this->assertStringContainsString('…',$html);
+		$html=(new FeedRenderer(new PostRepository()))->render(array('post_id'=>$post,'caption_length'=>18,'show_caption'=>true));$this->assertStringNotContainsString('<script>',$html);$this->assertStringContainsString('&lt;script&gt;', $html);$this->assertStringContainsString('plus text',$html);$this->assertStringContainsString('data-lif-caption-toggle',$html);
 	}
 	public function test_cache_version_changes_on_invalidation(): void { $before=(int)get_option('lif_cache_version',1);FeedRenderer::clearCache();$this->assertSame($before+1,(int)get_option('lif_cache_version')); }
 }

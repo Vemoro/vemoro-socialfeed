@@ -1,11 +1,11 @@
 {
   "translation-revision-date": "2026-07-19 00:00:00+0000",
-  "generator": "Local Instagram Feed",
-  "domain": "messages",
+  "generator": "Vemoro SocialFeed for WP",
+  "domain": "vemoro-socialfeed",
   "locale_data": {
     "messages": {
       "": {
-        "domain": "messages",
+        "domain": "vemoro-socialfeed",
         "lang": "de_DE",
         "plural-forms": "nplurals=2; plural=n != 1;"
       },
