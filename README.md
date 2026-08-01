@@ -269,6 +269,10 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ## Changelog
 
+### 2.1.4
+
+- Profil- und Medienabfragen verwenden die an das Zugriffstoken gebundenen `/me`-Endpunkte der Instagram API.
+
 ### 2.1.3
 
 - Verbindungsschaltflächen auf die normale WordPress-Buttonhöhe vereinheitlicht und sauber ausgerichtet.

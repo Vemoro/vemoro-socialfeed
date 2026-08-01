@@ -13,11 +13,10 @@ final class InstagramApiClient {
 	/** @return array{items:array<int,Media>,complete:bool,oldest:string,pages:int} */
 	public function media( int $limit, int $maxPages ): array {
 		$version = preg_match( '/^v\d+\.\d+$/', (string) Config::settings()['api_version'] ) ? (string) Config::settings()['api_version'] : Config::DEFAULT_API_VERSION;
-		$userId  = $this->tokens->userId();
-		if ( ! $userId ) {
+		if ( ! $this->tokens->userId() ) {
 			throw new ApiException( __( 'No Instagram account is connected.', 'vemoro-socialfeed' ) ); }
 		$fields        = 'id,caption,media_type,media_product_type,media_url,thumbnail_url,permalink,timestamp,username,accessibility_caption,like_count,comments_count,children{id,media_type,media_product_type,media_url,thumbnail_url,accessibility_caption}';
-		$url           = self::GRAPH_HOST . '/' . rawurlencode( $version ) . '/' . rawurlencode( $userId ) . '/media?' . http_build_query(
+		$url           = self::GRAPH_HOST . '/' . rawurlencode( $version ) . '/me/media?' . http_build_query(
 			array(
 				'fields' => $fields,
 				'limit'  => min( 100, $limit ),
@@ -74,7 +73,7 @@ final class InstagramApiClient {
 	/** @return array<string,mixed> */
 	public function profile(): array {
 		$version = (string) Config::settings()['api_version'];
-		$url     = self::GRAPH_HOST . '/' . rawurlencode( $version ) . '/' . rawurlencode( $this->tokens->userId() ) . '?fields=id,username,account_type,media_count';
+		$url     = self::GRAPH_HOST . '/' . rawurlencode( $version ) . '/me?fields=user_id,username';
 		return $this->request( $url );
 	}
 

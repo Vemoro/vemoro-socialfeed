@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.1.3
+Stable tag: 2.1.4
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -46,6 +46,9 @@ All signed-in users see the support notice immediately in the WordPress backend.
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.1.4 =
+* Use token-bound `/me` endpoints for Instagram profile and media requests.
 
 = 2.1.3 =
 * Keeps connection actions at the standard WordPress button height and aligns them consistently.
