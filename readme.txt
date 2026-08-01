@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.1.0
+Stable tag: 2.1.2
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -46,6 +46,18 @@ All signed-in users see the support notice immediately in the WordPress backend.
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.1.2 =
+* Stores versioned acceptance of the Vemoro terms and privacy notice in the WordPress settings.
+* Moves the acceptance control next to the Vemoro Login selection.
+* Collapses expert-mode Meta App credentials until that connection method is selected.
+* Sends one-time OAuth grants as JSON and remains compatible with the broker's form-encoded transition endpoint.
+
+= 2.1.1 =
+* Repairs missing synchronization schedules automatically after WordPress or Action Scheduler initialization.
+* Detects an existing WP-Cron fallback even when Action Scheduler is installed.
+* Uses WP-Cron safely when Action Scheduler is loaded but not ready or cannot create an action.
+* Makes hosted OAuth callbacks independent of legacy WordPress admin-page slugs.
 
 = 2.1.0 =
 * Migrates the WordPress.org distribution slug, main file, text domain and language files to `vemoro-socialfeed`.

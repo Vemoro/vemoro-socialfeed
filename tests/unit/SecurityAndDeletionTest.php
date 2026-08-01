@@ -16,6 +16,11 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$this->assertSame(admin_url('admin.php'),Config::redirectUri());
 		update_option(Config::OPTION,$old,false);
 	}
+	public function test_hosted_oauth_ignores_a_legacy_configured_admin_page(): void {
+		$old=get_option(Config::OPTION,array());$settings=Config::defaults();$settings['oauth_provider']='vemoro';$settings['redirect_uri']=admin_url('admin.php?page=local-instagram-feed');update_option(Config::OPTION,$settings,false);
+		$this->assertSame(admin_url('admin.php'),Config::redirectUri());
+		update_option(Config::OPTION,$old,false);
+	}
 	public function test_support_notice_is_immediate_private_and_dismissible_for_non_admins(): void {
 		$user=self::factory()->user->create(array('role'=>'subscriber'));wp_set_current_user($user);$notice=new SupportNotice();
 		ob_start();$notice->render();$html=(string)ob_get_clean();

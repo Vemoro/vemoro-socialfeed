@@ -52,6 +52,10 @@ final class AdminPage {
 		add_menu_page( __( 'Vemoro SocialFeed for WP', 'vemoro-socialfeed' ), __( 'Vemoro SocialFeed', 'vemoro-socialfeed' ), 'manage_options', 'vemoro-socialfeed', array( $this, 'render' ), 'dashicons-instagram', 81 );
 		add_submenu_page( 'vemoro-socialfeed', __( 'Vemoro SocialFeed settings', 'vemoro-socialfeed' ), __( 'Settings', 'vemoro-socialfeed' ), 'manage_options', 'vemoro-socialfeed', array( $this, 'render' ) );
 		add_submenu_page( 'vemoro-socialfeed', __( 'Synced Instagram posts', 'vemoro-socialfeed' ), __( 'Synced posts', 'vemoro-socialfeed' ), 'manage_options', 'edit.php?post_type=' . Config::POST_TYPE );
+		// Keep callbacks created by pre-2.1 installations routable without
+		// exposing the old slug as a duplicate menu entry.
+		add_submenu_page( 'vemoro-socialfeed', __( 'Vemoro SocialFeed settings', 'vemoro-socialfeed' ), __( 'Settings', 'vemoro-socialfeed' ), 'manage_options', 'local-instagram-feed', array( $this, 'render' ) );
+		remove_submenu_page( 'vemoro-socialfeed', 'local-instagram-feed' );
 	}
 
 	public function settings(): void {
@@ -82,6 +86,10 @@ final class AdminPage {
 		$redirect                     = (string) preg_replace( '/[?#].*$/', '', esc_url_raw( (string) ( $in['redirect_uri'] ?? '' ) ) );
 		$out['redirect_uri']          = $this->validRedirect( $redirect ) ? $redirect : '';
 		$out['api_version']           = preg_match( '/^v\d+\.\d+$/', (string) ( $in['api_version'] ?? '' ) ) ? (string) $in['api_version'] : Config::DEFAULT_API_VERSION;
+		$out['terms_accepted']        = ! empty( $in['terms_accepted'] );
+		$out['terms_version']         = $out['terms_accepted'] ? Config::TERMS_VERSION : '';
+		$out['terms_accepted_at']     = $out['terms_accepted'] ? ( Config::TERMS_VERSION === (string) ( $old['terms_version'] ?? '' ) ? (int) ( $old['terms_accepted_at'] ?? 0 ) : time() ) : 0;
+		$out['terms_accepted_by']     = $out['terms_accepted'] ? ( Config::TERMS_VERSION === (string) ( $old['terms_version'] ?? '' ) ? (int) ( $old['terms_accepted_by'] ?? 0 ) : get_current_user_id() ) : 0;
 		$out['post_limit']            = max( 1, min( 100, (int) ( $in['post_limit'] ?? 12 ) ) );
 		$out['caption_length']        = max( 0, min( 5000, (int) ( $in['caption_length'] ?? 300 ) ) );
 		$out['sync_interval']         = in_array( (string) ( $in['sync_interval'] ?? '' ), array( 'lif_15_minutes', 'lif_30_minutes', 'hourly', 'lif_two_hours', 'lif_six_hours', 'daily' ), true ) ? (string) $in['sync_interval'] : 'lif_two_hours';
@@ -192,14 +200,15 @@ final class AdminPage {
 		$s = Config::settings();
 		echo '<form method="post" action="options.php" class="lif-card"><h2>' . esc_html__( 'Instagram connection method', 'vemoro-socialfeed' ) . '</h2>';
 		settings_fields( 'lif_settings_group' );
-		echo '<p><label><input type="radio" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="vemoro" ' . checked( 'vemoro', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Vemoro Login (recommended)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'No Meta App ID or App Secret is required in WordPress. The login is handled by the Vemoro connection service.', 'vemoro-socialfeed' ) . '</span></p>';
-		echo '<p><label><input type="radio" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="custom" ' . checked( 'custom', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Own Meta app (expert mode)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'Use your own Meta app and callback configuration.', 'vemoro-socialfeed' ) . '</span></p>';
-		echo '<h3>' . esc_html__( 'Expert-mode credentials', 'vemoro-socialfeed' ) . '</h3>';
+		echo '<p><label><input type="radio" class="lif-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="vemoro" ' . checked( 'vemoro', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Vemoro Login (recommended)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'No Meta App ID or App Secret is required in WordPress. The login is handled by the Vemoro connection service.', 'vemoro-socialfeed' ) . '</span></p>';
+		echo '<div id="lif-hosted-oauth-settings" ' . ( 'vemoro' === $s['oauth_provider'] ? '' : 'hidden' ) . '><p><label><input type="checkbox" name="' . esc_attr( Config::OPTION ) . '[terms_accepted]" value="1" ' . checked( Config::termsAccepted(), true, false ) . '> ' . esc_html__( 'I accept the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/nutzungsbedingungen/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Terms of Use', 'vemoro-socialfeed' ) . '</a> ' . esc_html__( 'and acknowledge the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/datenschutz/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Privacy Notice', 'vemoro-socialfeed' ) . '</a>.</label></p></div>';
+		echo '<p><label><input type="radio" class="lif-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="custom" ' . checked( 'custom', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Own Meta app (expert mode)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'Use your own Meta app and callback configuration.', 'vemoro-socialfeed' ) . '</span></p>';
+		echo '<div id="lif-custom-app-settings" ' . ( 'custom' === $s['oauth_provider'] ? '' : 'hidden' ) . '><h3>' . esc_html__( 'Expert-mode credentials', 'vemoro-socialfeed' ) . '</h3>';
 		echo '<table class="form-table"><tr><th><label for="lif-app-id">' . esc_html__( 'Meta App ID', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-app-id" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( defined( 'LIF_INSTAGRAM_APP_ID' ) ? '' : $s['app_id'] ) . '" class="regular-text" ' . ( defined( 'LIF_INSTAGRAM_APP_ID' ) ? 'disabled' : '' ) . '></td></tr>';
 		echo '<tr><th><label for="lif-secret">' . esc_html__( 'Meta App Secret', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-secret" type="password" autocomplete="new-password" name="' . esc_attr( Config::OPTION ) . '[app_secret]" value="" class="regular-text" ' . ( defined( 'LIF_INSTAGRAM_APP_SECRET' ) ? 'disabled' : '' ) . '><p class="description">' . esc_html__( 'Stored encrypted; leave blank to keep the current value. wp-config.php constants take precedence.', 'vemoro-socialfeed' ) . '</p></td></tr>';
-		echo '<tr><th><label for="lif-redirect">' . esc_html__( 'Redirect URI', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-redirect" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( Config::redirectUri() ) . '" class="large-text"><p class="description">' . esc_html__( 'Enter this URI in Meta exactly as displayed. OAuth callback URIs must not contain query parameters.', 'vemoro-socialfeed' ) . '</p></td></tr><tr><th><label for="lif-version">' . esc_html__( 'API version', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-version" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"></td></tr></table>';
+		echo '<tr><th><label for="lif-redirect">' . esc_html__( 'Redirect URI', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-redirect" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( Config::redirectUri() ) . '" class="large-text"><p class="description">' . esc_html__( 'Enter this URI in Meta exactly as displayed. OAuth callback URIs must not contain query parameters.', 'vemoro-socialfeed' ) . '</p></td></tr><tr><th><label for="lif-version">' . esc_html__( 'API version', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-version" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"></td></tr></table></div>';
 		foreach ( Config::settings() as $key => $value ) {
-			if ( ! in_array( $key, array( 'oauth_provider', 'connect_url', 'app_id', 'app_secret', 'redirect_uri', 'api_version' ), true ) ) {
+			if ( ! in_array( $key, array( 'oauth_provider', 'connect_url', 'app_id', 'app_secret', 'redirect_uri', 'api_version', 'terms_accepted', 'terms_accepted_at', 'terms_accepted_by', 'terms_version' ), true ) ) {
 				echo '<input type="hidden" name="' . esc_attr( Config::OPTION ) . '[' . esc_attr( $key ) . ']" value="' . esc_attr( is_bool( $value ) ? ( $value ? '1' : '0' ) : $value ) . '">';}
 		}
 		submit_button();
@@ -216,7 +225,7 @@ final class AdminPage {
 		$s = Config::settings();
 		echo '<form method="post" action="options.php" class="lif-card"><h2>' . esc_html__( 'Display and operation', 'vemoro-socialfeed' ) . '</h2>';
 		settings_fields( 'lif_settings_group' );
-		echo '<input type="hidden" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="' . esc_attr( $s['oauth_provider'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[connect_url]" value="' . esc_attr( $s['connect_url'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( $s['app_id'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( $s['redirect_uri'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '">';
+		echo '<input type="hidden" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="' . esc_attr( $s['oauth_provider'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[connect_url]" value="' . esc_attr( $s['connect_url'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( $s['app_id'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( $s['redirect_uri'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[terms_accepted]" value="' . ( Config::termsAccepted() ? '1' : '0' ) . '">';
 		$numbers = array(
 			'post_limit'     => __( 'Posts to synchronize', 'vemoro-socialfeed' ),
 			'caption_length' => __( 'Maximum caption length', 'vemoro-socialfeed' ),
@@ -349,7 +358,7 @@ final class AdminPage {
 
 	public function connect(): void {
 		$this->guard( 'lif_connect' );
-		if ( $this->oauth->isHosted() && '1' !== Request::post( 'confirm_terms' ) ) {
+		if ( $this->oauth->isHosted() && ! Config::termsAccepted() ) {
 			$this->redirectNotice( __( 'The Terms of Use must be accepted before starting the Vemoro Login.', 'vemoro-socialfeed' ), 'error' );
 		}
 		try {
@@ -456,7 +465,8 @@ final class AdminPage {
 	}
 	public function callback(): void {
 		$userId            = get_current_user_id();
-		$explicitRoute     = 'oauth_callback' === sanitize_key( Request::query( 'lif_action' ) ) && 'vemoro-socialfeed' === sanitize_key( Request::query( 'page' ) );
+		$callbackPage      = sanitize_key( Request::query( 'page' ) );
+		$explicitRoute     = 'oauth_callback' === sanitize_key( Request::query( 'lif_action' ) ) && in_array( $callbackPage, array( '', 'vemoro-socialfeed', 'local-instagram-feed' ), true );
 		$instagramFallback = isset( $GLOBALS['pagenow'] ) && 'admin.php' === $GLOBALS['pagenow'] && '' !== Request::query( 'state' ) && ( '' !== Request::query( 'code' ) || '' !== Request::query( 'error' ) ) && $userId > 0 && $this->oauth->hasPendingState( $userId );
 		if ( ! $explicitRoute && ! $instagramFallback ) {
 			return; }
@@ -518,17 +528,10 @@ final class AdminPage {
 		$url = wp_nonce_url( admin_url( 'admin-post.php?action=' . $action ), $action );
 		return '<a class="button button-' . $class . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a> '; }
 	private function hostedConnectForm( string $label ): string {
-		$terms  = 'https://vemoro.de/nutzungsbedingungen/';
-		$privacy = 'https://vemoro.de/datenschutz/';
 		return '<form class="lif-hosted-connect" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
 			. '<input type="hidden" name="action" value="lif_connect">'
 			. wp_nonce_field( 'lif_connect', '_wpnonce', true, false )
-			. '<p><label><input type="checkbox" name="confirm_terms" value="1" required> '
-			. esc_html__( 'I accept the', 'vemoro-socialfeed' ) . ' '
-			. '<a href="' . esc_url( $terms ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Terms of Use', 'vemoro-socialfeed' ) . '</a> '
-			. esc_html__( 'and acknowledge the', 'vemoro-socialfeed' ) . ' '
-			. '<a href="' . esc_url( $privacy ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Privacy Notice', 'vemoro-socialfeed' ) . '</a>.'
-			. '</label></p><p class="submit"><button class="button button-primary" type="submit">' . esc_html( $label ) . '</button></p></form> '; }
+			. '<p class="submit"><button class="button button-primary" type="submit">' . esc_html( $label ) . '</button></p></form> '; }
 	private function guard( string $action ): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Insufficient permissions.', 'vemoro-socialfeed' ) );

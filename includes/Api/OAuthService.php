@@ -65,10 +65,15 @@ final class OAuthService {
 				array(
 					'timeout'     => 20,
 					'redirection' => 0,
-					'headers'     => array( 'Accept' => 'application/json' ),
-					'body'        => array(
-						'grant_code'   => $code,
-						'callback_url' => Config::redirectUri(),
+					'headers'     => array(
+						'Accept'       => 'application/json',
+						'Content-Type' => 'application/json',
+					),
+					'body'        => wp_json_encode(
+						array(
+							'grant_code'   => $code,
+							'callback_url' => Config::redirectUri(),
+						)
 					),
 				)
 			);

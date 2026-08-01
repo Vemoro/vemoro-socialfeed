@@ -269,6 +269,20 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ## Changelog
 
+### 2.1.2
+
+- Versionierte Zustimmung zu Nutzungsbedingungen und Datenschutzhinweisen dauerhaft in den WordPress-Einstellungen gespeichert.
+- Zustimmung direkt bei der Auswahl „Vemoro Login“ platziert.
+- Zugangsdaten der eigenen Meta-App werden erst nach Auswahl des Expertenmodus aufgeklappt.
+- Einmalige OAuth-Grants werden als JSON übertragen; der Broker bleibt während des Übergangs mit formularbasierten Plugin-Versionen kompatibel.
+
+### 2.1.1
+
+- Fehlende Synchronisierungspläne werden nach der Initialisierung von WordPress beziehungsweise Action Scheduler automatisch repariert.
+- Ein vorhandener WP-Cron-Ersatztermin wird auch bei installiertem Action Scheduler korrekt erkannt und angezeigt.
+- Ist Action Scheduler zwar geladen, aber noch nicht einsatzbereit, bleibt WP-Cron als sicherer Rückfall aktiv.
+- OAuth-Rücksprünge des Vemoro-Verbindungsdienstes sind unabhängig von alten WordPress-Admin-Seiten-Slugs.
+
 ### 2.1.0
 
 - WordPress.org-Slug, Pluginordner, Hauptdatei, Textdomain und Sprachdateien auf `vemoro-socialfeed` migriert.

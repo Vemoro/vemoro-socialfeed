@@ -17,6 +17,7 @@ final class Config {
 	public const LIBERAPAY_URL                     = 'https://liberapay.com/vemoro/donate';
 	public const GITHUB_SPONSORS_URL               = 'https://github.com/sponsors/vemoro';
 	public const SUPPORT_EMAIL                     = 'support@vemoro.de';
+	public const TERMS_VERSION                     = '2026-08-01';
 
 	/** @return array<string,mixed> */
 	public static function defaults(): array {
@@ -27,6 +28,10 @@ final class Config {
 			'app_secret'            => '',
 			'redirect_uri'          => '',
 			'api_version'           => self::DEFAULT_API_VERSION,
+			'terms_accepted'        => false,
+			'terms_accepted_at'     => 0,
+			'terms_accepted_by'     => 0,
+			'terms_version'         => '',
 			'post_limit'            => 12,
 			'sync_interval'         => 'lif_two_hours',
 			'caption_length'        => 300,
@@ -73,6 +78,11 @@ final class Config {
 		return 'vemoro' === (string) self::settings()['oauth_provider'];
 	}
 
+	public static function termsAccepted(): bool {
+		$settings = self::settings();
+		return ! empty( $settings['terms_accepted'] ) && self::TERMS_VERSION === (string) ( $settings['terms_version'] ?? '' );
+	}
+
 	public static function connectUrl(): string {
 		if ( defined( 'VEMORO_SOCIALFEED_CONNECT_URL' ) ) {
 			return untrailingslashit( (string) VEMORO_SOCIALFEED_CONNECT_URL );
@@ -92,6 +102,12 @@ final class Config {
 	}
 
 	public static function redirectUri(): string {
+		// The hosted broker owns the public Meta callback. WordPress only needs a
+		// stable local return endpoint; never carry a legacy admin-page slug into
+		// a new hosted OAuth flow.
+		if ( self::usesHostedOAuth() ) {
+			return admin_url( 'admin.php' );
+		}
 		$configured = (string) ( self::settings()['redirect_uri'] ?? '' );
 		$uri        = $configured ?: admin_url( 'admin.php' );
 		return (string) preg_replace( '/[?#].*$/', '', $uri );

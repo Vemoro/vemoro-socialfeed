@@ -3,7 +3,7 @@ return array(
 	'x-generator'               => 'Vemoro SocialFeed for WP',
 	'translation-revision-date' => '2026-07-20 00:00:00+0000',
 	'plural-forms'              => 'nplurals=2; plural=n != 1;',
-	'project-id-version'        => 'Vemoro SocialFeed for WP 2.1.0',
+	'project-id-version'        => 'Vemoro SocialFeed for WP 2.1.2',
 	'language'                  => 'de',
 	'messages'                  => array(
 		'Vemoro SocialFeed for WP requires PHP 8.1 and WordPress 6.5 or newer.' => 'Vemoro SocialFeed for WP benötigt PHP 8.1 und WordPress 6.5 oder neuer.',
