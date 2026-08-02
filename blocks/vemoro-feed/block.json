@@ -1,7 +1,7 @@
 {
   "apiVersion": 3,
   "name": "vemoro-socialfeed/feed",
-  "version": "2.1.0",
+  "version": "2.1.6",
   "title": "Vemoro SocialFeed",
   "category": "widgets",
   "icon": "instagram",

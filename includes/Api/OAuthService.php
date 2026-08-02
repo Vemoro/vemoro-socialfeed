@@ -18,7 +18,7 @@ final class OAuthService {
 				array(
 					'callback_url'   => Config::redirectUri(),
 					'state'          => $state,
-					'plugin_version' => LIF_VERSION,
+					'plugin_version' => VEMORO_SOCIALFEED_VERSION,
 					'site'           => home_url( '/' ),
 				),
 				'',

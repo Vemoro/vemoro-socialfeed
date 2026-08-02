@@ -4,7 +4,7 @@ namespace LocalInstagramFeed;
 final class Activation {
 	public static function activate(): void {
 		if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
-			deactivate_plugins( plugin_basename( LIF_PLUGIN_FILE ) );
+			deactivate_plugins( plugin_basename( VEMORO_SOCIALFEED_PLUGIN_FILE ) );
 			wp_die( esc_html__( 'Vemoro SocialFeed for WP requires PHP 8.1 or newer.', 'vemoro-socialfeed' ) );
 		}
 		self::upgrade();

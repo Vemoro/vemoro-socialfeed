@@ -116,7 +116,7 @@ final class AdminPage {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		} $tab = sanitize_key( Request::query( 'tab' ) ?: 'connection' );
-		echo '<div class="wrap lif-admin"><div class="lif-brand"><img src="' . esc_url( LIF_PLUGIN_URL . 'assets/images/vemoro-logo.svg' ) . '" alt="Vemoro"><h1>' . esc_html__( 'SocialFeed for WP', 'vemoro-socialfeed' ) . '</h1></div><nav class="nav-tab-wrapper">';
+		echo '<div class="wrap lif-admin"><div class="lif-brand"><img src="' . esc_url( VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/images/vemoro-logo.svg' ) . '" alt="Vemoro"><h1>' . esc_html__( 'SocialFeed for WP', 'vemoro-socialfeed' ) . '</h1></div><nav class="nav-tab-wrapper">';
 		$tabs = array(
 			'connection'  => __( 'Connection', 'vemoro-socialfeed' ),
 			'sync'        => __( 'Synchronization', 'vemoro-socialfeed' ),
@@ -338,7 +338,7 @@ final class AdminPage {
 		$orphans = $this->posts->orphanedOwnedMediaSummary();
 		$status  = (array) get_option( Config::STATUS_OPTION, array() );
 		$report  = array(
-			'Plugin'                  => LIF_VERSION,
+			'Plugin'                  => VEMORO_SOCIALFEED_VERSION,
 			'WordPress'               => get_bloginfo( 'version' ),
 			'PHP'                     => PHP_VERSION,
 			'cURL'                    => extension_loaded( 'curl' ) ? 'yes' : 'no',
@@ -526,8 +526,8 @@ final class AdminPage {
 	public function assets( string $hook ): void {
 		if ( false === strpos( $hook, 'vemoro-socialfeed' ) ) {
 			return;
-		} wp_enqueue_style( 'lif-admin', LIF_PLUGIN_URL . 'assets/css/admin.css', array(), LIF_VERSION );
-		wp_enqueue_script( 'lif-admin', LIF_PLUGIN_URL . 'assets/js/admin.js', array(), LIF_VERSION, true );
+		} wp_enqueue_style( 'lif-admin', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/css/admin.css', array(), VEMORO_SOCIALFEED_VERSION );
+		wp_enqueue_script( 'lif-admin', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/js/admin.js', array(), VEMORO_SOCIALFEED_VERSION, true );
 		wp_localize_script(
 			'lif-admin',
 			'lifAdmin',

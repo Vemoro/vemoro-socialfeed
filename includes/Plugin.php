@@ -28,7 +28,6 @@ final class Plugin {
 	public function boot(): void {
 		if ( Config::DB_VERSION !== (string) get_option( Config::DB_VERSION_OPTION, '' ) ) {
 			Activation::upgrade(); }
-		load_plugin_textdomain( 'vemoro-socialfeed', false, dirname( plugin_basename( LIF_PLUGIN_FILE ) ) . '/languages' );
 		add_action( 'admin_init', array( self::class, 'addPrivacyPolicyContent' ) );
 		add_action(
 			'init',

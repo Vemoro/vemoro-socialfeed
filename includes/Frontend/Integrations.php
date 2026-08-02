@@ -46,8 +46,8 @@ final class Integrations {
 		add_action( 'template_redirect', array( $this, 'detail' ) );
 	}
 	public function block(): void {
-		wp_register_style( 'lif-block-editor', LIF_PLUGIN_URL . 'assets/css/frontend.css', array(), LIF_VERSION );
-		wp_register_script( 'lif-block-editor', LIF_PLUGIN_URL . 'assets/js/block.js', array( 'wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-i18n' ), LIF_VERSION, true );
+		wp_register_style( 'lif-block-editor', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/css/frontend.css', array(), VEMORO_SOCIALFEED_VERSION );
+		wp_register_script( 'lif-block-editor', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/js/block.js', array( 'wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-i18n' ), VEMORO_SOCIALFEED_VERSION, true );
 		$settings = Config::settings();
 		$defaults = array(
 			'heading'                  => '',
@@ -80,9 +80,9 @@ final class Integrations {
 		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockDefaults = ' . wp_json_encode( $defaults ) . ';', 'before' );
 		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockPalette = ' . wp_json_encode( $this->block_palette() ) . ';', 'before' );
 		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockTypography = ' . wp_json_encode( $this->block_typography() ) . ';', 'before' );
-		wp_set_script_translations( 'lif-block-editor', 'vemoro-socialfeed', LIF_PLUGIN_DIR . 'languages' );
-		register_block_type( LIF_PLUGIN_DIR . 'blocks/vemoro-feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
-		register_block_type( LIF_PLUGIN_DIR . 'blocks/feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
+		wp_set_script_translations( 'lif-block-editor', 'vemoro-socialfeed', VEMORO_SOCIALFEED_PLUGIN_DIR . 'languages' );
+		register_block_type( VEMORO_SOCIALFEED_PLUGIN_DIR . 'blocks/vemoro-feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
+		register_block_type( VEMORO_SOCIALFEED_PLUGIN_DIR . 'blocks/feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
 	}
 	public function render_block( array $attrs ): string {
 		$background = isset( $attrs['section_background'] ) ? sanitize_hex_color( (string) $attrs['section_background'] ) : '';

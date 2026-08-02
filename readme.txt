@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.1.5
+Stable tag: 2.1.6
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -46,6 +46,11 @@ All signed-in users see the support notice immediately in the WordPress backend.
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.1.6 =
+* Removes the obsolete manual translation loader and relies on WordPress.org language packs.
+* Uses fully plugin-prefixed runtime constants and uninstall variables.
+* Documents intentional uncached access to the plugin-owned media and diagnostic tables for Plugin Check.
 
 = 2.1.5 =
 * Adds safe diagnostic details for failed API operations without logging tokens or query strings.
