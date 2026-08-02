@@ -2,6 +2,7 @@
 namespace LocalInstagramFeed\Repository;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
+
 /*
  * This repository owns the lif_instagram_media mapping table. Synchronization,
  * deletion and attachment-reference safety checks require current database
