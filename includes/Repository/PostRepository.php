@@ -2,6 +2,15 @@
 namespace LocalInstagramFeed\Repository;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
+/*
+ * This repository owns the lif_instagram_media mapping table. Synchronization,
+ * deletion and attachment-reference safety checks require current database
+ * state, so caching these narrowly scoped reads would be incorrect. Metadata
+ * queries are limited to the plugin CPT and plugin-owned attachments.
+ */
+// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query, WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+// phpcs:disable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
 
 use LocalInstagramFeed\Config;
 use LocalInstagramFeed\Domain\Media;

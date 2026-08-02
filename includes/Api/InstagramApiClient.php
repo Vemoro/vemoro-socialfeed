@@ -88,7 +88,7 @@ final class InstagramApiClient {
 					'Authorization' => 'Bearer ' . $this->tokens->accessToken(),
 					'Accept'        => 'application/json',
 				),
-				'user-agent'  => 'LocalInstagramFeed/' . LIF_VERSION . '; ' . home_url( '/' ),
+				'user-agent'  => 'VemoroSocialFeed/' . VEMORO_SOCIALFEED_VERSION . '; ' . home_url( '/' ),
 			)
 		);
 		if ( is_wp_error( $response ) ) {

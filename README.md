@@ -216,7 +216,7 @@ node tests/js/frontend-row-height.test.js
 Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus einem markierten Commit erstellen:
 
 ```bash
-git archive --format=zip --prefix=vemoro-socialfeed/ -o vemoro-socialfeed-2.1.0.zip HEAD
+git archive --format=zip --prefix=vemoro-socialfeed/ -o vemoro-socialfeed-2.1.6.zip HEAD
 ```
 
 ## Fehlerbehebung
@@ -268,6 +268,12 @@ Alle angemeldeten Benutzer sehen den entsprechenden Hinweis unmittelbar im WordP
 Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vemoro.de) gesendet werden. Die Adresse wird sowohl im Backend-Hinweis als auch in der Plugin-Verwaltung angezeigt.
 
 ## Changelog
+
+### 2.1.6
+
+- Veralteten manuellen Übersetzungsloader entfernt; Übersetzungen werden über die WordPress-Sprachpakete geladen.
+- Laufzeitkonstanten und Variablen der Deinstallationsroutine vollständig mit dem Plugin-Präfix versehen.
+- Absichtliche, nicht zwischengespeicherte Zugriffe auf die plugin-eigenen Medien- und Diagnosetabellen für Plugin Check nachvollziehbar dokumentiert.
 
 ### 2.1.5
 

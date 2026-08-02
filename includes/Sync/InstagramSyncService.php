@@ -25,7 +25,7 @@ final class InstagramSyncService {
 			return $result; }
 		$started = microtime( true );
 		$phase   = 'starting';
-		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => LIF_VERSION ) );
+		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => VEMORO_SOCIALFEED_VERSION ) );
 		set_transient(
 			'lif_sync_progress',
 			array(

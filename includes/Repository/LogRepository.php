@@ -11,6 +11,8 @@ final class LogRepository {
 			return; }
 		global $wpdb;
 		$clean = $this->redact( $context );
+		// Logs live in a dedicated plugin table; every insert must reach the database immediately.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 		$wpdb->insert(
 			$wpdb->prefix . 'lif_logs',
 			array(
@@ -23,6 +25,8 @@ final class LogRepository {
 		);
 		$limit = max( 10, min( 5000, (int) $settings['log_limit'] ) );
 		$table = $wpdb->prefix . 'lif_logs';
+		// Retention is enforced atomically in the dedicated log table; cached data is not applicable.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query( $wpdb->prepare( 'DELETE FROM %i WHERE id NOT IN (SELECT id FROM (SELECT id FROM %i ORDER BY id DESC LIMIT %d) lif_keep)', $table, $table, $limit ) );
 	}
 
@@ -30,6 +34,8 @@ final class LogRepository {
 	public function latest( int $limit = 100 ): array {
 		global $wpdb;
 		$table = $wpdb->prefix . 'lif_logs';
+		// Diagnostics must show the current dedicated-table contents and therefore intentionally bypass caching.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT id, created_at, level, message, context FROM %i ORDER BY id DESC LIMIT %d', $table, max( 1, min( 500, $limit ) ) ) );
 	}
 

@@ -12,7 +12,7 @@ final class FeedRenderer {
 		$options = $this->normalize( $args );
 		$this->enqueue();
 		$version = (int) get_option( 'lif_cache_version', 1 );
-		$key     = 'lif_feed_' . md5( (string) wp_json_encode( array( LIF_VERSION, $version, $options, get_locale() ) ) );
+		$key     = 'lif_feed_' . md5( (string) wp_json_encode( array( VEMORO_SOCIALFEED_VERSION, $version, $options, get_locale() ) ) );
 		$cached  = get_transient( $key );
 		if ( is_string( $cached ) ) {
 			return $cached; }
@@ -23,6 +23,8 @@ final class FeedRenderer {
 			'orderby'        => 'date',
 			'order'          => $options['order'],
 			'no_found_rows'  => true,
+			// The bounded feed query must filter the plugin CPT by its local active flag.
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
 			'meta_query'     => array(
 				'relation' => 'AND',
 				array(
@@ -285,6 +287,6 @@ final class FeedRenderer {
 			return '';
 		} return mb_strlen( $text ) <= $length ? $text : rtrim( mb_substr( $text, 0, $length - 1 ) ) . '…'; }
 	private function enqueue(): void {
-		wp_enqueue_style( 'lif-frontend', LIF_PLUGIN_URL . 'assets/css/frontend.css', array(), LIF_VERSION );
-		wp_enqueue_script( 'lif-frontend', LIF_PLUGIN_URL . 'assets/js/frontend.js', array(), LIF_VERSION, true ); }
+		wp_enqueue_style( 'lif-frontend', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/css/frontend.css', array(), VEMORO_SOCIALFEED_VERSION );
+		wp_enqueue_script( 'lif-frontend', VEMORO_SOCIALFEED_PLUGIN_URL . 'assets/js/frontend.js', array(), VEMORO_SOCIALFEED_VERSION, true ); }
 }
