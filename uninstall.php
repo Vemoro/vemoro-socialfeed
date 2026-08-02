@@ -25,8 +25,9 @@ foreach ( $vemoro_socialfeed_posts as $vemoro_socialfeed_post_id ) {
 			'post_parent' => (int) $vemoro_socialfeed_post_id,
 			'fields'      => 'ids',
 			// The opt-in uninstall must identify only attachments explicitly owned by this plugin.
-			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key
 			'meta_key'    => '_lif_owned',
+			// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 			'meta_value'  => '1',
 		)
 	);
