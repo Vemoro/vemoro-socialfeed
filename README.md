@@ -282,6 +282,12 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 - Vemoro Connect und Instagram/Meta einschließlich Datenübertragung, Nutzungsbedingungen und Datenschutzrichtlinien vollständig in `readme.txt` offengelegt.
 - Adminhinweis auf Pluginseiten begrenzt und mitgelieferte Übersetzungsdateien für die WordPress.org-Ausgabe entfernt.
 
+### 2.1.6
+
+- Veralteten manuellen Übersetzungsloader entfernt; Übersetzungen werden über die WordPress-Sprachpakete geladen.
+- Laufzeitkonstanten und Variablen der Deinstallationsroutine vollständig mit dem Plugin-Präfix versehen.
+- Absichtliche, nicht zwischengespeicherte Zugriffe auf die plugin-eigenen Medien- und Diagnosetabellen für Plugin Check dokumentiert.
+
 ### 2.1.5
 
 - Fehlerprotokolle um Phase, API-Operation, HTTP-Status, Meta-Fehlercode und Meta-Request-ID ergänzt, ohne Token oder Queryparameter zu speichern.

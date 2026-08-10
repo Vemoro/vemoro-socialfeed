@@ -89,6 +89,11 @@ For technical questions and problems, contact support@vemoro.de. The address is 
 * Documents the Vemoro and Instagram/Meta external services, data transfers, terms and privacy policies.
 * Limits the optional support notice to plugin administration screens and removes bundled translation files for WordPress.org distribution.
 
+= 2.1.6 =
+* Removes the obsolete manual translation loader and relies on WordPress.org language packs.
+* Uses fully plugin-prefixed runtime constants and uninstall variables.
+* Documents intentional uncached access to the plugin-owned media and diagnostic tables for Plugin Check.
+
 = 2.1.5 =
 * Adds safe diagnostic details for failed API operations without logging tokens or query strings.
 * Shows a persistent connection warning only after the same error occurs twice in succession.
