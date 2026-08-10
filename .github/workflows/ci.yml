@@ -108,9 +108,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan Git history for secrets
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.29.0 detect --source=/repo --redact --no-banner
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
