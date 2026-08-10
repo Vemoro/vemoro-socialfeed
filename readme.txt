@@ -51,7 +51,7 @@ Meta Platform Terms: https://developers.facebook.com/terms/
 
 == Source code and development ==
 
-The complete source code is maintained publicly at https://github.com/vemoro/socialfeed .
+The complete source code is maintained publicly at https://github.com/Vemoro/vemoro-socialfeed .
 
 The JavaScript files in `assets/js/` and CSS files in `assets/css/` are the complete, human-readable source files executed by the plugin. They are maintained directly and are not generated, bundled, minified, or compiled. No npm, webpack, or other asset build step is required.
 

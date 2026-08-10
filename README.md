@@ -195,7 +195,7 @@ Nach einer erfolgreichen Synchronisierung:
 
 ## Tests und Entwicklung
 
-Der vollständige Quellcode wird öffentlich unter [github.com/vemoro/socialfeed](https://github.com/vemoro/socialfeed) gepflegt. Die JavaScript-Dateien in `assets/js/` und die CSS-Dateien in `assets/css/` sind die vollständigen, menschenlesbaren Quelldateien, die das Plugin ausführt. Sie werden direkt gepflegt und weder generiert noch gebündelt, minifiziert oder kompiliert. Ein npm-, webpack- oder sonstiger Asset-Build ist daher nicht erforderlich.
+Der vollständige Quellcode wird öffentlich unter [github.com/Vemoro/vemoro-socialfeed](https://github.com/Vemoro/vemoro-socialfeed) gepflegt. Die JavaScript-Dateien in `assets/js/` und die CSS-Dateien in `assets/css/` sind die vollständigen, menschenlesbaren Quelldateien, die das Plugin ausführt. Sie werden direkt gepflegt und weder generiert noch gebündelt, minifiziert oder kompiliert. Ein npm-, webpack- oder sonstiger Asset-Build ist daher nicht erforderlich.
 
 ```bash
 composer install
