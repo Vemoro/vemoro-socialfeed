@@ -1,10 +1,10 @@
 <?php
-namespace LocalInstagramFeed\Cli;
+namespace Vemoro\SocialFeed\Cli;
 
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Frontend\FeedRenderer;
-use LocalInstagramFeed\Sync\InstagramSyncService;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Frontend\FeedRenderer;
+use Vemoro\SocialFeed\Sync\InstagramSyncService;
 
 final class Commands {
 	public function __construct( private readonly InstagramSyncService $sync, private readonly TokenService $tokens ) {}

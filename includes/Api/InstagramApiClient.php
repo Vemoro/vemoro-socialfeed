@@ -1,10 +1,10 @@
 <?php
-namespace LocalInstagramFeed\Api;
+namespace Vemoro\SocialFeed\Api;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Domain\Media;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Domain\Media;
 
 final class InstagramApiClient {
 	private const GRAPH_HOST = 'https://graph.instagram.com';
@@ -88,7 +88,7 @@ final class InstagramApiClient {
 					'Authorization' => 'Bearer ' . $this->tokens->accessToken(),
 					'Accept'        => 'application/json',
 				),
-				'user-agent'  => 'LocalInstagramFeed/' . LIF_VERSION . '; ' . home_url( '/' ),
+				'user-agent'  => 'Vemoro\SocialFeed/' . VEMORO_VERSION,
 			)
 		);
 		if ( is_wp_error( $response ) ) {

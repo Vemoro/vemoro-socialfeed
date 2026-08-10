@@ -1,7 +1,7 @@
 <?php
-namespace LocalInstagramFeed\Frontend;
+namespace Vemoro\SocialFeed\Frontend;
 
-use LocalInstagramFeed\Config;
+use Vemoro\SocialFeed\Config;
 
 final class Integrations {
 	public function __construct( private readonly FeedRenderer $renderer ) {}
@@ -28,26 +28,25 @@ final class Integrations {
 			)
 		);
 		add_shortcode( 'vemoro_socialfeed', $renderShortcode );
-		add_shortcode( 'local_instagram_feed', $renderShortcode );
 		add_action( 'init', array( $this, 'block' ) );
 		add_filter(
 			'query_vars',
 			static function ( array $vars ): array {
-				$vars[] = 'lif_detail';
+				$vars[] = 'vemoro_detail';
 				return $vars;
 			}
 		);
 		add_action(
 			'init',
 			static function (): void {
-				add_rewrite_rule( '^instagram-feed/([^/]+)/?$', 'index.php?lif_detail=$matches[1]', 'top' );
+				add_rewrite_rule( '^instagram-feed/([^/]+)/?$', 'index.php?vemoro_detail=$matches[1]', 'top' );
 			}
 		);
 		add_action( 'template_redirect', array( $this, 'detail' ) );
 	}
 	public function block(): void {
-		wp_register_style( 'lif-block-editor', LIF_PLUGIN_URL . 'assets/css/frontend.css', array(), LIF_VERSION );
-		wp_register_script( 'lif-block-editor', LIF_PLUGIN_URL . 'assets/js/block.js', array( 'wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-i18n' ), LIF_VERSION, true );
+		wp_register_style( 'vemoro-block-editor', VEMORO_PLUGIN_URL . 'assets/css/frontend.css', array(), VEMORO_VERSION );
+		wp_register_script( 'vemoro-block-editor', VEMORO_PLUGIN_URL . 'assets/js/block.js', array( 'wp-blocks', 'wp-element', 'wp-components', 'wp-block-editor', 'wp-server-side-render', 'wp-i18n' ), VEMORO_VERSION, true );
 		$settings = Config::settings();
 		$defaults = array(
 			'heading'                  => '',
@@ -77,21 +76,20 @@ final class Integrations {
 			'section_background'       => '',
 			'full_viewport_background' => false,
 		);
-		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockDefaults = ' . wp_json_encode( $defaults ) . ';', 'before' );
-		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockPalette = ' . wp_json_encode( $this->block_palette() ) . ';', 'before' );
-		wp_add_inline_script( 'lif-block-editor', 'window.lifBlockTypography = ' . wp_json_encode( $this->block_typography() ) . ';', 'before' );
-		wp_set_script_translations( 'lif-block-editor', 'vemoro-socialfeed', LIF_PLUGIN_DIR . 'languages' );
-		register_block_type( LIF_PLUGIN_DIR . 'blocks/vemoro-feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
-		register_block_type( LIF_PLUGIN_DIR . 'blocks/feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
+		wp_add_inline_script( 'vemoro-block-editor', 'window.vemoroBlockDefaults = ' . wp_json_encode( $defaults ) . ';', 'before' );
+		wp_add_inline_script( 'vemoro-block-editor', 'window.vemoroBlockPalette = ' . wp_json_encode( $this->block_palette() ) . ';', 'before' );
+		wp_add_inline_script( 'vemoro-block-editor', 'window.vemoroBlockTypography = ' . wp_json_encode( $this->block_typography() ) . ';', 'before' );
+		wp_set_script_translations( 'vemoro-block-editor', 'vemoro-socialfeed' );
+		register_block_type( VEMORO_PLUGIN_DIR . 'blocks/vemoro-feed', array( 'render_callback' => array( $this, 'render_block' ) ) );
 	}
 	public function render_block( array $attrs ): string {
 		$background = isset( $attrs['section_background'] ) ? sanitize_hex_color( (string) $attrs['section_background'] ) : '';
-		$extra      = array( 'class' => 'lif-feed-block' . ( ! empty( $attrs['full_viewport_background'] ) ? ' lif-feed-block--viewport' : '' ) );
+		$extra      = array( 'class' => 'vemoro-feed-block' . ( ! empty( $attrs['full_viewport_background'] ) ? ' vemoro-feed-block--viewport' : '' ) );
 		if ( $background ) {
 			$extra['style'] = 'background-color:' . $background . ';'; }
 		$heading = trim( wp_strip_all_tags( (string) ( $attrs['heading'] ?? '' ) ) );
 		$level   = min( 6, max( 2, (int) ( $attrs['heading_level'] ?? 2 ) ) );
-		$title   = '' !== $heading ? sprintf( '<h%1$d class="lif-feed-block__title"%3$s>%2$s</h%1$d>', $level, esc_html( $heading ), $this->heading_style( $attrs ) ) : '';
+		$title   = '' !== $heading ? sprintf( '<h%1$d class="vemoro-feed-block__title"%3$s>%2$s</h%1$d>', $level, esc_html( $heading ), $this->heading_style( $attrs ) ) : '';
 		return '<div ' . get_block_wrapper_attributes( $extra ) . '>' . $title . $this->renderer->render( $attrs ) . '</div>';
 	}
 	private function block_palette(): array {
@@ -110,7 +108,7 @@ final class Integrations {
 		}
 		$palette[] = array(
 			'name'  => __( 'Green sand', 'vemoro-socialfeed' ),
-			'slug'  => 'lif-green-sand',
+			'slug'  => 'vemoro-green-sand',
 			'color' => $green_sand,
 		);
 		return $palette;
@@ -159,7 +157,7 @@ final class Integrations {
 			return $styles ? ' style="' . esc_attr( implode( ';', $styles ) ) . '"' : '';
 	}
 	public function detail(): void {
-		$slug = sanitize_title( (string) get_query_var( 'lif_detail' ) );
+		$slug = sanitize_title( (string) get_query_var( 'vemoro_detail' ) );
 		if ( ! $slug || empty( Config::settings()['local_detail'] ) ) {
 			return; }
 		$post = get_page_by_path( $slug, OBJECT, Config::POST_TYPE );
@@ -176,9 +174,9 @@ final class Integrations {
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The renderer returns complete HTML whose dynamic values are escaped at construction.
 		wp_head();
 		echo '</head><body ';
-		body_class( 'lif-detail-page' );
+		body_class( 'vemoro-detail-page' );
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The title is escaped above and the renderer escapes every dynamic value while returning complete HTML.
-		echo '><main class="lif-detail"><h1>' . $title . '</h1>' . $this->renderer->render(
+		echo '><main class="vemoro-detail"><h1>' . $title . '</h1>' . $this->renderer->render(
 			array(
 				'post_id'        => (int) $post->ID,
 				'posts'          => 1,

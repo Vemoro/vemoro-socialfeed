@@ -1,18 +1,18 @@
 <?php
-namespace LocalInstagramFeed\Sync;
+namespace Vemoro\SocialFeed\Sync;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Api\InstagramApiClient;
-use LocalInstagramFeed\Api\ApiException;
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Diagnostics\FailureTracker;
-use LocalInstagramFeed\Domain\Media;
-use LocalInstagramFeed\Domain\SyncResult;
-use LocalInstagramFeed\Frontend\FeedRenderer;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Repository\PostRepository;
+use Vemoro\SocialFeed\Api\InstagramApiClient;
+use Vemoro\SocialFeed\Api\ApiException;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Diagnostics\FailureTracker;
+use Vemoro\SocialFeed\Domain\Media;
+use Vemoro\SocialFeed\Domain\SyncResult;
+use Vemoro\SocialFeed\Frontend\FeedRenderer;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Repository\PostRepository;
 
 final class InstagramSyncService {
 	public function __construct( private readonly InstagramApiClient $api, private readonly TokenService $tokens, private readonly PostRepository $posts, private readonly MediaDownloadService $downloads, private readonly SyncLock $lock, private readonly LogRepository $logs ) {}
@@ -25,9 +25,9 @@ final class InstagramSyncService {
 			return $result; }
 		$started = microtime( true );
 		$phase   = 'starting';
-		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => LIF_VERSION ) );
+		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => VEMORO_VERSION ) );
 		set_transient(
-			'lif_sync_progress',
+			'vemoro_sync_progress',
 			array(
 				'phase'   => 'starting',
 				'current' => 0,
@@ -62,7 +62,7 @@ final class InstagramSyncService {
 			$seen            = array();
 			$current         = 0;
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
 					'phase'   => 'media',
 					'current' => 0,
@@ -94,7 +94,7 @@ final class InstagramSyncService {
 						)
 					); }
 				set_transient(
-					'lif_sync_progress',
+					'vemoro_sync_progress',
 					array(
 						'phase'   => 'media',
 						'current' => $current,
@@ -125,7 +125,7 @@ final class InstagramSyncService {
 			update_option( Config::STATUS_OPTION, $status, false );
 			$this->logs->add( 'info', 'Instagram synchronization completed.', $result->toArray() );
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
 					'phase'   => 'complete',
 					'current' => $result->fetched,
@@ -148,7 +148,7 @@ final class InstagramSyncService {
 			$context['consecutive_failures'] = (int) $status['consecutive_failures'];
 			$this->logs->add( 'error', 'Instagram synchronization aborted.', $context );
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
 					'phase'   => 'failed',
 					'current' => 0,

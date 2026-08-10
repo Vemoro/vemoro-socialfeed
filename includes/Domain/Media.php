@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Domain;
+namespace Vemoro\SocialFeed\Domain;
 
 final class Media {
 	/** @param array<int,Media> $children */

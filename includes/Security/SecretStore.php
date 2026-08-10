@@ -1,8 +1,8 @@
 <?php
-namespace LocalInstagramFeed\Security;
+namespace Vemoro\SocialFeed\Security;
 
 final class SecretStore implements SecretStoreInterface {
-	private const PREFIX = 'lif_secret_';
+	private const PREFIX = 'vemoro_secret_';
 
 	public function store( string $key, string $value ): bool {
 		$encrypted = $this->encrypt( $value );

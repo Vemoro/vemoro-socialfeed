@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed;
+namespace Vemoro\SocialFeed;
 
 final class CronManager {
 	public static function register(): void {
@@ -12,19 +12,19 @@ final class CronManager {
 	}
 	/** @param array<string,array<string,mixed>> $schedules @return array<string,array<string,mixed>> */
 	public static function intervals( array $schedules ): array {
-		$schedules['lif_15_minutes'] = array(
+		$schedules['vemoro_15_minutes'] = array(
 			'interval' => 900,
 			'display'  => __( 'Every 15 minutes', 'vemoro-socialfeed' ),
 		);
-		$schedules['lif_30_minutes'] = array(
+		$schedules['vemoro_30_minutes'] = array(
 			'interval' => 1800,
 			'display'  => __( 'Every 30 minutes', 'vemoro-socialfeed' ),
 		);
-		$schedules['lif_two_hours']  = array(
+		$schedules['vemoro_two_hours']  = array(
 			'interval' => 7200,
 			'display'  => __( 'Every two hours', 'vemoro-socialfeed' ),
 		);
-		$schedules['lif_six_hours']  = array(
+		$schedules['vemoro_six_hours']  = array(
 			'interval' => 21600,
 			'display'  => __( 'Every six hours', 'vemoro-socialfeed' ),
 		);
@@ -32,7 +32,7 @@ final class CronManager {
 	}
 	public static function schedule(): void {
 		add_filter( 'cron_schedules', array( self::class, 'intervals' ) );
-		$interval = (string) ( Config::settings()['sync_interval'] ?? 'lif_two_hours' );
+		$interval = (string) ( Config::settings()['sync_interval'] ?? 'vemoro_two_hours' );
 		if ( self::scheduleWithActionScheduler( $interval ) ) {
 			return;
 		}
@@ -42,7 +42,7 @@ final class CronManager {
 	}
 
 	public static function ensureScheduled(): void {
-		$interval = (string) ( Config::settings()['sync_interval'] ?? 'lif_two_hours' );
+		$interval = (string) ( Config::settings()['sync_interval'] ?? 'vemoro_two_hours' );
 		if ( self::scheduleWithActionScheduler( $interval ) ) {
 			// Remove an activation-time fallback only after Action Scheduler has
 			// confirmed an existing or newly created recurring action.
@@ -66,7 +66,7 @@ final class CronManager {
 	public static function unschedule(): void {
 		if ( function_exists( 'as_unschedule_all_actions' ) ) {
 			try {
-				as_unschedule_all_actions( Config::CRON_HOOK, array(), 'local-instagram-feed' );
+				as_unschedule_all_actions( Config::CRON_HOOK, array(), 'vemoro-socialfeed' );
 			} catch ( \Throwable ) {
 				wp_clear_scheduled_hook( Config::CRON_HOOK );
 				return;
@@ -88,7 +88,7 @@ final class CronManager {
 			return 0;
 		}
 		try {
-			return (int) as_next_scheduled_action( Config::CRON_HOOK, array(), 'local-instagram-feed' );
+			return (int) as_next_scheduled_action( Config::CRON_HOOK, array(), 'vemoro-socialfeed' );
 		} catch ( \Throwable ) {
 			return 0;
 		}
@@ -98,7 +98,7 @@ final class CronManager {
 			return false;
 		}
 		try {
-			return self::actionSchedulerNext() > 0 || (int) as_schedule_recurring_action( time() + 60, self::seconds( $interval ), Config::CRON_HOOK, array(), 'local-instagram-feed', true ) > 0;
+			return self::actionSchedulerNext() > 0 || (int) as_schedule_recurring_action( time() + 60, self::seconds( $interval ), Config::CRON_HOOK, array(), 'vemoro-socialfeed', true ) > 0;
 		} catch ( \Throwable ) {
 			// A loaded but unavailable Action Scheduler must not disable syncing.
 			return false;
@@ -106,11 +106,11 @@ final class CronManager {
 	}
 	private static function seconds( string $interval ): int {
 		return array(
-			'lif_15_minutes' => 900,
-			'lif_30_minutes' => 1800,
+			'vemoro_15_minutes' => 900,
+			'vemoro_30_minutes' => 1800,
 			'hourly'         => 3600,
-			'lif_two_hours'  => 7200,
-			'lif_six_hours'  => 21600,
+			'vemoro_two_hours'  => 7200,
+			'vemoro_six_hours'  => 21600,
 			'daily'          => 86400,
 		)[ $interval ] ?? 7200; }
 }

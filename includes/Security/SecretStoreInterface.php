@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Security;
+namespace Vemoro\SocialFeed\Security;
 
 interface SecretStoreInterface {
 	public function store( string $key, string $value ): bool;

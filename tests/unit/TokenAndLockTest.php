@@ -1,9 +1,9 @@
 <?php
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Security\SecretStore;
-use LocalInstagramFeed\Sync\SyncLock;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Security\SecretStore;
+use Vemoro\SocialFeed\Sync\SyncLock;
 
 final class TokenAndLockTest extends WP_UnitTestCase {
 	public function test_secret_round_trip_and_delete(): void { $store=new SecretStore();$this->assertTrue($store->available());$store->store('test','sensitive');$this->assertSame('sensitive',$store->get('test'));$store->delete('test');$this->assertNull($store->get('test')); }

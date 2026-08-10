@@ -1,5 +1,5 @@
 <?php
-use LocalInstagramFeed\Diagnostics\FailureTracker;
+use Vemoro\SocialFeed\Diagnostics\FailureTracker;
 
 final class FailureTrackerTest extends WP_UnitTestCase {
 	public function test_transient_error_is_logged_but_not_exposed_as_persistent_warning(): void {
