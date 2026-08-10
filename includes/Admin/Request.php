@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Admin;
+namespace Vemoro\SocialFeed\Admin;
 
 final class Request {
 	public static function query( string $key ): string {

@@ -1,11 +1,11 @@
 <?php
-namespace LocalInstagramFeed\Sync;
+namespace Vemoro\SocialFeed\Sync;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Domain\Media;
-use LocalInstagramFeed\Repository\PostRepository;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Domain\Media;
+use Vemoro\SocialFeed\Repository\PostRepository;
 
 final class MediaDownloadService {
 	public function __construct( private readonly PostRepository $posts ) {}
@@ -26,7 +26,7 @@ final class MediaDownloadService {
 		}
 		if ( ! $this->validSource( $url ) ) {
 			throw new \RuntimeException( __( 'Instagram returned an unsafe media URL.', 'vemoro-socialfeed' ) ); }
-		$tmp = wp_tempnam( 'lif-' . $media->id );
+		$tmp = wp_tempnam( 'vemoro-' . $media->id );
 		if ( ! $tmp ) {
 			throw new \RuntimeException( __( 'Could not create a temporary media file.', 'vemoro-socialfeed' ) ); }
 		try {
@@ -58,14 +58,14 @@ final class MediaDownloadService {
 			if ( is_wp_error( $attachmentId ) ) {
 				throw new \RuntimeException( $attachmentId->get_error_message() ); }
 			$tmp = '';
-			update_post_meta( (int) $attachmentId, '_lif_owned', '1' );
-			update_post_meta( (int) $attachmentId, '_lif_media_id', $media->id );
-			update_post_meta( (int) $attachmentId, '_lif_source_host', (string) wp_parse_url( $finalUrl, PHP_URL_HOST ) );
+			update_post_meta( (int) $attachmentId, '_vemoro_owned', '1' );
+			update_post_meta( (int) $attachmentId, '_vemoro_media_id', $media->id );
+			update_post_meta( (int) $attachmentId, '_vemoro_source_host', (string) wp_parse_url( $finalUrl, PHP_URL_HOST ) );
 			if ( ! $video ) {
 				$alt = $media->altText ?: wp_trim_words( wp_strip_all_tags( $media->caption ), 20, '…' );
 				if ( $alt ) {
 					update_post_meta( (int) $attachmentId, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
-					update_post_meta( (int) $attachmentId, '_lif_managed_alt', sanitize_text_field( $alt ) ); }
+					update_post_meta( (int) $attachmentId, '_vemoro_managed_alt', sanitize_text_field( $alt ) ); }
 			}
 			return (int) $attachmentId;
 		} finally {

@@ -1,33 +1,23 @@
 <?php
-namespace LocalInstagramFeed\Repository;
+namespace Vemoro\SocialFeed\Repository;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-/*
- * This repository owns the lif_instagram_media mapping table. Synchronization,
- * deletion and attachment-reference safety checks require current database
- * state, so caching these narrowly scoped reads would be incorrect. Metadata
- * queries are limited to the plugin CPT and plugin-owned attachments.
- */
-// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
-// phpcs:disable WordPress.DB.SlowDBQuery.slow_db_query_meta_query, WordPress.DB.SlowDBQuery.slow_db_query_meta_key, WordPress.DB.SlowDBQuery.slow_db_query_meta_value
-// phpcs:disable WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in
-
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Domain\Media;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Domain\Media;
 
 final class PostRepository {
 	/** @return array<string,mixed>|null */
 	public function index( string $mediaId ): ?array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		$row   = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE media_id = %s', $table, $mediaId ), ARRAY_A );
 		return is_array( $row ) ? $row : null;
 	}
 
 	public function findPostId( string $mediaId ): int {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM %i WHERE media_id = %s AND parent_media_id = ''", $table, $mediaId ) );
 	}
 
@@ -50,29 +40,29 @@ final class PostRepository {
 			$postId = (int) $result;
 			$hash   = $media->semanticHash();
 			$meta   = array(
-				'_lif_media_id'            => $media->id,
-				'_lif_media_type'          => $media->mediaType,
-				'_lif_product_type'        => $media->productType,
-				'_lif_username'            => $media->username,
-				'_lif_caption'             => $media->caption,
-				'_lif_timestamp'           => $media->timestamp,
-				'_lif_permalink'           => $media->permalink,
-				'_lif_synced_at'           => current_time( 'mysql', true ),
-				'_lif_last_success'        => current_time( 'mysql', true ),
-				'_lif_hash'                => $hash,
-				'_lif_status'              => 'active',
-				'_lif_exists'              => '1',
-				'_lif_missing_count'       => 0,
-				'_lif_removed_handled'     => '0',
-				'_lif_attachment_id'       => $attachmentId,
-				'_lif_video_attachment_id' => $videoAttachmentId,
-				'_lif_display_enabled'     => '1',
-				'_lif_like_count'          => $media->likeCount,
-				'_lif_comments_count'      => $media->commentsCount,
+				'_vemoro_media_id'            => $media->id,
+				'_vemoro_media_type'          => $media->mediaType,
+				'_vemoro_product_type'        => $media->productType,
+				'_vemoro_username'            => $media->username,
+				'_vemoro_caption'             => $media->caption,
+				'_vemoro_timestamp'           => $media->timestamp,
+				'_vemoro_permalink'           => $media->permalink,
+				'_vemoro_synced_at'           => current_time( 'mysql', true ),
+				'_vemoro_last_success'        => current_time( 'mysql', true ),
+				'_vemoro_hash'                => $hash,
+				'_vemoro_status'              => 'active',
+				'_vemoro_exists'              => '1',
+				'_vemoro_missing_count'       => 0,
+				'_vemoro_removed_handled'     => '0',
+				'_vemoro_attachment_id'       => $attachmentId,
+				'_vemoro_video_attachment_id' => $videoAttachmentId,
+				'_vemoro_display_enabled'     => '1',
+				'_vemoro_like_count'          => $media->likeCount,
+				'_vemoro_comments_count'      => $media->commentsCount,
 			);
 			foreach ( $meta as $key => $value ) {
 				update_post_meta( $postId, $key, $value ); }
-			delete_post_meta( $postId, '_lif_missing_since' );
+			delete_post_meta( $postId, '_vemoro_missing_since' );
 			if ( $attachmentId ) {
 				set_post_thumbnail( $postId, $attachmentId ); }
 			$this->upsertIndex( $media->id, $postId, '', $attachmentId, $videoAttachmentId, 0, $media->mediaType, $hash, 'ok', '' );
@@ -83,17 +73,17 @@ final class PostRepository {
 	}
 
 	public function touch( int $postId ): void {
-		update_post_meta( $postId, '_lif_last_success', current_time( 'mysql', true ) );
-		update_post_meta( $postId, '_lif_missing_count', 0 );
-		update_post_meta( $postId, '_lif_exists', '1' );
-		update_post_meta( $postId, '_lif_display_enabled', '1' );
-		delete_post_meta( $postId, '_lif_missing_since' );
+		update_post_meta( $postId, '_vemoro_last_success', current_time( 'mysql', true ) );
+		update_post_meta( $postId, '_vemoro_missing_count', 0 );
+		update_post_meta( $postId, '_vemoro_exists', '1' );
+		update_post_meta( $postId, '_vemoro_display_enabled', '1' );
+		delete_post_meta( $postId, '_vemoro_missing_since' );
 	}
 
 	public function setDisplayEnabled( string $mediaId, bool $enabled ): void {
 		$postId = $this->findPostId( $mediaId );
 		if ( $postId > 0 ) {
-			update_post_meta( $postId, '_lif_display_enabled', $enabled ? '1' : '0' ); }
+			update_post_meta( $postId, '_vemoro_display_enabled', $enabled ? '1' : '0' ); }
 	}
 
 	public function saveChild( int $postId, string $parentId, Media $media, int $attachmentId, int $position, string $error = '' ): void {
@@ -103,7 +93,7 @@ final class PostRepository {
 	/** @return array<int,object> */
 	public function children( string $parentId ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		return $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE parent_media_id = %s ORDER BY position ASC', $table, $parentId ) );
 	}
 
@@ -119,7 +109,7 @@ final class PostRepository {
 				'fields'         => 'ids',
 				'meta_query'     => array(
 					array(
-						'key'     => '_lif_timestamp',
+						'key'     => '_vemoro_timestamp',
 						'value'   => $oldestTimestamp,
 						'compare' => '>=',
 					),
@@ -128,23 +118,23 @@ final class PostRepository {
 		);
 		$removed = 0;
 		foreach ( $query->posts as $postId ) {
-			$id = (string) get_post_meta( $postId, '_lif_media_id', true );
-			if ( in_array( $id, $seen, true ) || '1' === get_post_meta( $postId, '_lif_removed_handled', true ) ) {
+			$id = (string) get_post_meta( $postId, '_vemoro_media_id', true );
+			if ( in_array( $id, $seen, true ) || '1' === get_post_meta( $postId, '_vemoro_removed_handled', true ) ) {
 				continue; }
-			$count = (int) get_post_meta( $postId, '_lif_missing_count', true ) + 1;
-			update_post_meta( $postId, '_lif_missing_count', $count );
-			$missingSince = (int) get_post_meta( $postId, '_lif_missing_since', true );
+			$count = (int) get_post_meta( $postId, '_vemoro_missing_count', true ) + 1;
+			update_post_meta( $postId, '_vemoro_missing_count', $count );
+			$missingSince = (int) get_post_meta( $postId, '_vemoro_missing_since', true );
 			if ( $missingSince <= 0 ) {
 				$missingSince = time();
-				update_post_meta( $postId, '_lif_missing_since', $missingSince ); }
+				update_post_meta( $postId, '_vemoro_missing_since', $missingSince ); }
 			if ( $count < 3 ) {
 				continue; }
 			$graceHours = max( 0, min( 48, $graceHours ) );
 			if ( $graceHours > 0 && time() < $missingSince + ( $graceHours * HOUR_IN_SECONDS ) ) {
 				continue; }
-			update_post_meta( $postId, '_lif_exists', '0' );
-			update_post_meta( $postId, '_lif_removed_handled', '1' );
-			update_post_meta( $postId, '_lif_status', 'removed' );
+			update_post_meta( $postId, '_vemoro_exists', '0' );
+			update_post_meta( $postId, '_vemoro_removed_handled', '1' );
+			update_post_meta( $postId, '_vemoro_status', 'removed' );
 			if ( 'trash' === $behavior ) {
 				wp_trash_post( (int) $postId ); } elseif ( 'delete' === $behavior ) {
 				$this->deleteOwnedAttachments( (int) $postId );
@@ -189,28 +179,28 @@ final class PostRepository {
 				'meta_query'     => array(
 					'relation' => 'AND',
 					array(
-						'key'   => '_lif_status',
+						'key'   => '_vemoro_status',
 						'value' => 'active',
 					),
 					array(
 						'relation' => 'OR',
 						array(
-							'key'     => '_lif_exists',
+							'key'     => '_vemoro_exists',
 							'compare' => 'NOT EXISTS',
 						),
 						array(
-							'key'   => '_lif_exists',
+							'key'   => '_vemoro_exists',
 							'value' => '1',
 						),
 					),
 					array(
 						'relation' => 'OR',
 						array(
-							'key'     => '_lif_display_enabled',
+							'key'     => '_vemoro_display_enabled',
 							'compare' => 'NOT EXISTS',
 						),
 						array(
-							'key'   => '_lif_display_enabled',
+							'key'   => '_vemoro_display_enabled',
 							'value' => '1',
 						),
 					),
@@ -220,7 +210,7 @@ final class PostRepository {
 		$allPostIds  = array_values( array_map( 'intval', $allPostIds ) );
 		$keptPostIds = array_values( array_map( 'intval', $keptPostIds ) );
 		foreach ( $keptPostIds as $postId ) {
-			delete_post_meta( $postId, '_lif_excess_since' );}
+			delete_post_meta( $postId, '_vemoro_excess_since' );}
 		$candidates = array_values( array_diff( $allPostIds, $keptPostIds ) );
 		$result     = array(
 			'posts'                => 0,
@@ -229,15 +219,15 @@ final class PostRepository {
 		);
 		if ( $retentionDays < 0 ) {
 			foreach ( $candidates as $postId ) {
-				delete_post_meta( $postId, '_lif_excess_since' );
+				delete_post_meta( $postId, '_vemoro_excess_since' );
 			}return $result;}
 		$now    = time();
 		$cutoff = $now - ( $retentionDays * DAY_IN_SECONDS );
 		foreach ( $candidates as $postId ) {
-			$since = (int) get_post_meta( $postId, '_lif_excess_since', true );
+			$since = (int) get_post_meta( $postId, '_vemoro_excess_since', true );
 			if ( $since <= 0 ) {
 				$since = $now;
-				update_post_meta( $postId, '_lif_excess_since', $since );
+				update_post_meta( $postId, '_vemoro_excess_since', $since );
 				if ( $retentionDays > 0 ) {
 					continue;}
 			}
@@ -285,9 +275,9 @@ final class PostRepository {
 		);
 		foreach ( $candidates as $attachmentId ) {
 			if ( $this->attachmentReferencedOutside( $attachmentId, $pluginPostIds ) ) {
-				delete_post_meta( $attachmentId, '_lif_owned' );
-				delete_post_meta( $attachmentId, '_lif_media_id' );
-				delete_post_meta( $attachmentId, '_lif_source_host' );
+				delete_post_meta( $attachmentId, '_vemoro_owned' );
+				delete_post_meta( $attachmentId, '_vemoro_media_id' );
+				delete_post_meta( $attachmentId, '_vemoro_source_host' );
 				++$result['retained'];
 				continue;
 			}
@@ -303,14 +293,14 @@ final class PostRepository {
 	/** @return array<int,int> */
 	private function orphanedOwnedAttachmentIds(): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		$owned = get_posts(
 			array(
 				'post_type'      => 'attachment',
 				'post_status'    => 'inherit',
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
-				'meta_key'       => '_lif_owned',
+				'meta_key'       => '_vemoro_owned',
 				'meta_value'     => '1',
 			)
 		);
@@ -353,7 +343,7 @@ final class PostRepository {
 	/** @return array{posts:int,attachments:int,retained_attachments:int} */
 	public function deleteAll(): array {
 		global $wpdb;
-		$table               = $wpdb->prefix . 'lif_instagram_media';
+		$table               = $wpdb->prefix . 'vemoro_instagram_media';
 		$postIds             = get_posts(
 			array(
 				'post_type'      => Config::POST_TYPE,
@@ -369,7 +359,7 @@ final class PostRepository {
 				'post_status'    => 'inherit',
 				'posts_per_page' => -1,
 				'fields'         => 'ids',
-				'meta_key'       => '_lif_owned',
+				'meta_key'       => '_vemoro_owned',
 				'meta_value'     => '1',
 			)
 		);
@@ -378,9 +368,9 @@ final class PostRepository {
 		$retainedAttachments = 0;
 		foreach ( $attachmentIds as $attachmentId ) {
 			if ( $this->attachmentReferencedOutside( $attachmentId, $postIds ) ) {
-				delete_post_meta( $attachmentId, '_lif_owned' );
-				delete_post_meta( $attachmentId, '_lif_media_id' );
-				delete_post_meta( $attachmentId, '_lif_source_host' );
+				delete_post_meta( $attachmentId, '_vemoro_owned' );
+				delete_post_meta( $attachmentId, '_vemoro_media_id' );
+				delete_post_meta( $attachmentId, '_vemoro_source_host' );
 				++$retainedAttachments;
 				continue;
 			}
@@ -402,7 +392,7 @@ final class PostRepository {
 
 	private function upsertIndex( string $mediaId, int $postId, string $parentId, int $attachmentId, int $videoAttachmentId, int $position, string $type, string $hash, string $status, string $error ): void {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		$wpdb->replace(
 			$table,
 			array(
@@ -425,7 +415,7 @@ final class PostRepository {
 	/** @return array{attachments:int,retained_attachments:int} */
 	private function deleteOwnedAttachments( int $postId ): array {
 		global $wpdb;
-		$table = $wpdb->prefix . 'lif_instagram_media';
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
 		$rows  = $wpdb->get_results( $wpdb->prepare( 'SELECT attachment_id, video_attachment_id FROM %i WHERE post_id = %d', $table, $postId ), ARRAY_A );
 		$ids   = array();
 		foreach ( $rows as $row ) {
@@ -434,12 +424,12 @@ final class PostRepository {
 		$deleted  = 0;
 		$retained = 0;
 		foreach ( array_filter( array_unique( $ids ) ) as $id ) {
-			if ( '1' !== get_post_meta( $id, '_lif_owned', true ) ) {
+			if ( '1' !== get_post_meta( $id, '_vemoro_owned', true ) ) {
 				continue; }
 			if ( $this->attachmentReferencedOutside( $id, array( $postId ) ) ) {
-				delete_post_meta( $id, '_lif_owned' );
-				delete_post_meta( $id, '_lif_media_id' );
-				delete_post_meta( $id, '_lif_source_host' );
+				delete_post_meta( $id, '_vemoro_owned' );
+				delete_post_meta( $id, '_vemoro_media_id' );
+				delete_post_meta( $id, '_vemoro_source_host' );
 				++$retained;
 				continue;}
 			if ( wp_delete_attachment( $id, true ) ) {
@@ -476,7 +466,7 @@ final class PostRepository {
 		$serializedId    = '%i:' . $attachmentId . ';%';
 		$jsonId          = '%"attachment_id":' . $attachmentId . '%';
 		$mediaKeyPattern = '(attachment|image|media|gallery|logo|icon|background|header|thumbnail)';
-		$urlPattern      = is_string( $url ) && '' !== $url ? '%' . $wpdb->esc_like( $url ) . '%' : '__lif_no_url__';
+		$urlPattern      = is_string( $url ) && '' !== $url ? '%' . $wpdb->esc_like( $url ) . '%' : '__vemoro_no_url__';
 		if ( is_string( $url ) && '' !== $url ) {
 			$content_sql  = 'SELECT ID FROM %i WHERE (post_content LIKE %s OR post_content LIKE %s)';
 			$content_args = array( $wpdb->posts, '%' . $wpdb->esc_like( $url ) . '%', $idMarker );

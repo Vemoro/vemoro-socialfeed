@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed;
+namespace Vemoro\SocialFeed;
 
 final class Deactivation {
 	public static function deactivate(): void {

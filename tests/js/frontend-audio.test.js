@@ -33,9 +33,9 @@ function stage(video) {
 	const button = { dataset: { playLabel: 'play', pauseLabel: 'pause' }, setAttribute() {}, addEventListener() {} };
 	return {
 		classList: new ClassList(),
-		dataset: { lifHoverAutoplay: '1' },
+		dataset: { vemoroHoverAutoplay: '1' },
 		listeners: {},
-		querySelector(selector) { return '[data-lif-video]' === selector ? video : button; },
+		querySelector(selector) { return '[data-vemoro-video]' === selector ? video : button; },
 		addEventListener(name, callback) { this.listeners[name] = callback; },
 	};
 }
@@ -46,17 +46,17 @@ function stage(video) {
 	videos.forEach((video, index) => { video.stage = stages[index]; });
 	const confirmButton = { listeners: {}, addEventListener(name, callback) { this.listeners[name] = callback; } };
 	const cancelButton = { listeners: {}, addEventListener(name, callback) { this.listeners[name] = callback; } };
-	const dialog = { dataset: {}, listeners: {}, open: false, querySelector(selector) { if ('[data-lif-external-confirm-button]' === selector) { return confirmButton; } if ('[data-lif-external-cancel]' === selector) { return cancelButton; } return { textContent: 'privacy notice' }; }, addEventListener(name, callback) { this.listeners[name] = callback; }, showModal() { this.open = true; }, close() { this.open = false; } };
+	const dialog = { dataset: {}, listeners: {}, open: false, querySelector(selector) { if ('[data-vemoro-external-confirm-button]' === selector) { return confirmButton; } if ('[data-vemoro-external-cancel]' === selector) { return cancelButton; } return { textContent: 'privacy notice' }; }, addEventListener(name, callback) { this.listeners[name] = callback; }, showModal() { this.open = true; }, close() { this.open = false; } };
 	const feed = { querySelector() { return dialog; } };
 	const externalLink = { href: 'https://www.instagram.com/p/example/', target: '_blank', dataset: {}, listeners: {}, closest() { return feed; }, addEventListener(name, callback) { this.listeners[name] = callback; } };
 	const document = {
 		documentElement: { classList: new ClassList() },
 		querySelector() { return null; },
 		querySelectorAll(selector) {
-			if ('[data-lif-video]' === selector) { return videos; }
-			if ('[data-lif-video-stage]' === selector) { return stages; }
-			if ('[data-lif-external-dialog]' === selector) { return [dialog]; }
-			if ('[data-lif-external-confirm]' === selector) { return [externalLink]; }
+			if ('[data-vemoro-video]' === selector) { return videos; }
+			if ('[data-vemoro-video-stage]' === selector) { return stages; }
+			if ('[data-vemoro-external-dialog]' === selector) { return [dialog]; }
+			if ('[data-vemoro-external-confirm]' === selector) { return [externalLink]; }
 			return [];
 		},
 	};
@@ -81,7 +81,7 @@ function stage(video) {
 	externalLink.listeners.click({ preventDefault() { prevented = true; } });
 	assert.equal(prevented, true);
 	assert.equal(dialog.open, true);
-	assert.equal(dialog.dataset.lifUrl, externalLink.href);
+	assert.equal(dialog.dataset.vemoroUrl, externalLink.href);
 	assert.equal(browserWindow.opened, '');
 	confirmButton.listeners.click();
 	assert.equal(browserWindow.opened, externalLink.href);

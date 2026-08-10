@@ -1,7 +1,7 @@
 <?php
-namespace LocalInstagramFeed\Sync;
+namespace Vemoro\SocialFeed\Sync;
 
-use LocalInstagramFeed\Config;
+use Vemoro\SocialFeed\Config;
 
 final class SyncLock {
 	private string $token = '';

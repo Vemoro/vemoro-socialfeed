@@ -1,5 +1,5 @@
 <?php
-use LocalInstagramFeed\Domain\Media;
+use Vemoro\SocialFeed\Domain\Media;
 
 final class MediaTest extends WP_UnitTestCase {
 	public function test_maps_image_and_missing_optional_fields(): void { $media=Media::fromArray(array('id'=>'1','media_type'=>'IMAGE'));$this->assertSame('IMAGE',$media->mediaType);$this->assertSame('',$media->caption); }

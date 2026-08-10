@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Vemoro SocialFeed
  * Description: Synchronisiert Instagram-Medien serverseitig und gibt Inhalte und Medien datenschutzfreundlich aus WordPress aus.
- * Version: 2.1.6
+ * Version: 2.2.1
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: Vemoro
@@ -10,7 +10,6 @@
  * Plugin URI: https://vemoro.de/socialfeed/
  * License: GPL-2.0-or-later
  * Text Domain: vemoro-socialfeed
- * Domain Path: /languages
  */
 
 declare(strict_types=1);
@@ -19,27 +18,27 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'VEMORO_SOCIALFEED_VERSION', '2.1.6' );
-define( 'VEMORO_SOCIALFEED_PLUGIN_FILE', __FILE__ );
-define( 'VEMORO_SOCIALFEED_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'VEMORO_SOCIALFEED_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'VEMORO_VERSION', '2.2.1' );
+define( 'VEMORO_PLUGIN_FILE', __FILE__ );
+define( 'VEMORO_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'VEMORO_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
 spl_autoload_register(
 	static function ( string $class ): void {
-		$prefix = 'LocalInstagramFeed\\';
+		$prefix = 'Vemoro\SocialFeed\\';
 		if ( 0 !== strpos( $class, $prefix ) ) {
 			return;
 		}
 		$relative = str_replace( '\\', DIRECTORY_SEPARATOR, substr( $class, strlen( $prefix ) ) );
-		$file     = VEMORO_SOCIALFEED_PLUGIN_DIR . 'includes/' . $relative . '.php';
+		$file     = VEMORO_PLUGIN_DIR . 'includes/' . $relative . '.php';
 		if ( is_readable( $file ) ) {
 			require_once $file;
 		}
 	}
 );
 
-register_activation_hook( __FILE__, array( LocalInstagramFeed\Activation::class, 'activate' ) );
-register_deactivation_hook( __FILE__, array( LocalInstagramFeed\Deactivation::class, 'deactivate' ) );
+register_activation_hook( __FILE__, array( Vemoro\SocialFeed\Activation::class, 'activate' ) );
+register_deactivation_hook( __FILE__, array( Vemoro\SocialFeed\Deactivation::class, 'deactivate' ) );
 
 add_action(
 	'plugins_loaded',
@@ -53,20 +52,9 @@ add_action(
 			);
 			return;
 		}
-		LocalInstagramFeed\Plugin::instance()->boot();
+		Vemoro\SocialFeed\Plugin::instance()->boot();
 	}
 );
-
-if ( ! function_exists( 'lif_render_feed' ) ) {
-	/**
-	 * Render a local Instagram feed for themes.
-	 *
-	 * @param array<string,mixed> $args Display arguments.
-	 */
-	function lif_render_feed( array $args = array() ): string { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Public legacy API retained for backwards compatibility.
-		return LocalInstagramFeed\Plugin::instance()->renderer()->render( $args );
-	}
-}
 
 if ( ! function_exists( 'vemoro_socialfeed_render' ) ) {
 	/**
@@ -75,6 +63,6 @@ if ( ! function_exists( 'vemoro_socialfeed_render' ) ) {
 	 * @param array<string,mixed> $args Display arguments.
 	 */
 	function vemoro_socialfeed_render( array $args = array() ): string {
-		return lif_render_feed( $args );
+		return Vemoro\SocialFeed\Plugin::instance()->renderer()->render( $args );
 	}
 }

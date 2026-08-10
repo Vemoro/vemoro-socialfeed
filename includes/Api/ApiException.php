@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Api;
+namespace Vemoro\SocialFeed\Api;
 
 final class ApiException extends \RuntimeException {
 	public function __construct(

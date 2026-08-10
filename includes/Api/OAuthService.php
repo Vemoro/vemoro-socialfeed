@@ -1,9 +1,9 @@
 <?php
-namespace LocalInstagramFeed\Api;
+namespace Vemoro\SocialFeed\Api;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Config;
+use Vemoro\SocialFeed\Config;
 
 final class OAuthService {
 	private const STATE_TTL = 600;
@@ -12,13 +12,13 @@ final class OAuthService {
 		if ( ! Config::usesHostedOAuth() && ( ! Config::appId() || ! Config::appSecret() ) ) {
 			throw new \RuntimeException( __( 'Configure the Meta App ID and App Secret first.', 'vemoro-socialfeed' ) ); }
 		$state = bin2hex( random_bytes( 32 ) );
-		set_transient( 'lif_oauth_state_' . $userId, hash( 'sha256', $state ), self::STATE_TTL );
+		set_transient( 'vemoro_oauth_state_' . $userId, hash( 'sha256', $state ), self::STATE_TTL );
 		if ( Config::usesHostedOAuth() ) {
 			return Config::connectUrl() . '/v1/instagram/authorize?' . http_build_query(
 				array(
 					'callback_url'   => Config::redirectUri(),
 					'state'          => $state,
-					'plugin_version' => VEMORO_SOCIALFEED_VERSION,
+					'plugin_version' => VEMORO_VERSION,
 					'site'           => home_url( '/' ),
 				),
 				'',
@@ -43,14 +43,14 @@ final class OAuthService {
 	}
 
 	public function validateState( int $userId, string $state ): bool {
-		$key      = 'lif_oauth_state_' . $userId;
+		$key      = 'vemoro_oauth_state_' . $userId;
 		$expected = get_transient( $key );
 		delete_transient( $key );
 		return is_string( $expected ) && strlen( $state ) >= 32 && hash_equals( $expected, hash( 'sha256', $state ) );
 	}
 
 	public function hasPendingState( int $userId ): bool {
-		return is_string( get_transient( 'lif_oauth_state_' . $userId ) );
+		return is_string( get_transient( 'vemoro_oauth_state_' . $userId ) );
 	}
 
 	public function isHosted(): bool {
