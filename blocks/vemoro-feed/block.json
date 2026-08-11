@@ -1,11 +1,11 @@
 {
   "apiVersion": 3,
   "name": "vemoro-socialfeed/feed",
-  "version": "2.2.1",
+  "version": "2.2.2",
   "title": "Vemoro SocialFeed",
   "category": "widgets",
   "icon": "instagram",
-  "description": "Zeigt lokal synchronisierte Instagram-Beiträge an.",
+  "description": "Displays locally synchronized Instagram posts.",
   "textdomain": "vemoro-socialfeed",
   "editorScript": "vemoro-block-editor",
   "editorStyle": "vemoro-block-editor",
