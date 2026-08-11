@@ -39,6 +39,10 @@ jobs:
       - name: Test JavaScript
         run: |
           for test_file in tests/js/*.test.js; do node "$test_file"; done
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes subversion
       - name: Build SVN working copy
         env:
           WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
