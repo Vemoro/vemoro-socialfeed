@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -65,11 +65,6 @@ Development and test instructions are documented in the repository's README.md. 
 4. Connect a Business or Creator account.
 5. Run the first synchronization and add the block or shortcode.
 
-== Upgrade Notice ==
-
-= 2.1.0 =
-The folder changes to `vemoro-socialfeed`. Deactivate 2.0.3 without uninstalling it, replace the old folder with the new one and reactivate. Existing `lif_*` data and integrations remain unchanged. Keep uninstall data deletion disabled.
-
 == Voluntary support ==
 
 Vemoro SocialFeed for WP remains free of charge, without advertising or tracking. Voluntary contributions through Liberapay or GitHub Sponsors help fund maintenance, security updates, hosting and operation of the Vemoro connection service.
@@ -80,12 +75,18 @@ For technical questions and problems, contact support@vemoro.de. The address is 
 
 == Changelog ==
 
+= 2.2.2 =
+* Replaces the WordPress.org banner and icon with official Vemoro brand assets.
+* Adds GitHub funding links for Liberapay and GitHub Sponsors.
+* Removes unused compatibility code and related documentation.
+* Aligns translatable metadata with the English WordPress.org source language.
+
 = 2.2.1 =
 * Publishes the complete source repository and documents that the shipped JavaScript and CSS files are directly maintained, human-readable source files without a required asset build step.
-* Renames the remaining browser-side `lifAdmin` global and related identifiers to the unique `vemoro` prefix.
+* Renames the remaining browser-side identifiers to the unique `vemoro` prefix.
 
 = 2.2.0 =
-* Uses the unique `vemoro` prefix for declarations and stored data, with a one-time migration from earlier identifiers.
+* Uses the unique `vemoro` prefix for declarations and stored data.
 * Documents the Vemoro and Instagram/Meta external services, data transfers, terms and privacy policies.
 * Limits the optional support notice to plugin administration screens and removes bundled translation files for WordPress.org distribution.
 
@@ -118,7 +119,6 @@ For technical questions and problems, contact support@vemoro.de. The address is 
 
 = 2.1.0 =
 * Migrates the WordPress.org distribution slug, main file, text domain and language files to `vemoro-socialfeed`.
-* Preserves all `lif_*` data, the legacy block, shortcode, theme function and WP-CLI command.
 * Adds WordPress Privacy Policy Guide content and fully discloses the hosted OAuth service, data transfer, privacy information and terms.
 * Requires explicit, server-validated acceptance of the linked terms before a hosted Vemoro Login starts.
 * Prepares the official WordPress.org contributor, donation and upgrade metadata.

@@ -1,7 +1,6 @@
 <?php
 use Vemoro\SocialFeed\Api\OAuthService;
 use Vemoro\SocialFeed\Admin\SupportNotice;
-use Vemoro\SocialFeed\Activation;
 use Vemoro\SocialFeed\Config;
 use Vemoro\SocialFeed\Frontend\FeedRenderer;
 use Vemoro\SocialFeed\Repository\PostRepository;
@@ -31,13 +30,6 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		set_current_screen('dashboard');ob_start();$notice->render();$dashboardHtml=(string)ob_get_clean();$this->assertSame('',$dashboardHtml);
 		set_current_screen('toplevel_page_vemoro-socialfeed');update_user_meta($administrator,'vemoro_support_notice_dismissed','1');ob_start();$notice->render();$dismissed=(string)ob_get_clean();$this->assertSame('',$dismissed);
 		delete_user_meta($administrator,'vemoro_support_notice_dismissed');
-	}
-	public function test_legacy_storage_is_migrated_to_the_vemoro_prefix(): void {
-		delete_option(Config::OPTION);update_option('lif_settings',array('post_limit'=>7,'sync_interval'=>'lif_two_hours'),false);
-		$post=self::factory()->post->create(array('post_type'=>'lif_instagram_post','post_status'=>'publish'));update_post_meta($post,'_lif_media_id','legacy-media');
-		Activation::upgrade();
-		$settings=get_option(Config::OPTION,array());$this->assertSame(7,(int)$settings['post_limit']);$this->assertSame('vemoro_two_hours',$settings['sync_interval']);$this->assertFalse(get_option('lif_settings',false));
-		$this->assertSame(Config::POST_TYPE,get_post_type($post));$this->assertSame('legacy-media',get_post_meta($post,'_vemoro_media_id',true));$this->assertSame('',get_post_meta($post,'_lif_media_id',true));
 	}
 	public function test_removed_post_is_only_deactivated_after_three_complete_observations(): void {
 		$post=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish'));update_post_meta($post,'_vemoro_media_id','missing');update_post_meta($post,'_vemoro_timestamp','2026-01-01T00:00:00+0000');update_post_meta($post,'_vemoro_status','active');$repo=new PostRepository();
