@@ -26,6 +26,7 @@ final class MediaDownloadService {
 		}
 		if ( ! $this->validSource( $url ) ) {
 			throw new \RuntimeException( __( 'Instagram returned an unsafe media URL.', 'vemoro-socialfeed' ) ); }
+		require_once ABSPATH . 'wp-admin/includes/file.php';
 		$tmp = wp_tempnam( 'vemoro-' . $media->id );
 		if ( ! $tmp ) {
 			throw new \RuntimeException( __( 'Could not create a temporary media file.', 'vemoro-socialfeed' ) ); }
@@ -51,7 +52,6 @@ final class MediaDownloadService {
 				'size'     => filesize( $tmp ),
 				'type'     => $mime,
 			);
-			require_once ABSPATH . 'wp-admin/includes/file.php';
 			require_once ABSPATH . 'wp-admin/includes/media.php';
 			require_once ABSPATH . 'wp-admin/includes/image.php';
 			$attachmentId = media_handle_sideload( $file, $parentPostId, wp_trim_words( $media->caption, 12, '…' ) );

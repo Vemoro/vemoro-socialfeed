@@ -258,6 +258,10 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 
 ## Changelog
 
+### 2.2.3
+
+- Behebt die Mediensynchronisierung, wenn die WordPress-Dateifunktionen noch nicht geladen wurden.
+
 ### 2.2.2
 
 - Offizielle Vemoro-Markenassets für Banner und Plugin-Icon auf WordPress.org ergänzt.
