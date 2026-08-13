@@ -4,7 +4,7 @@ Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
 Tested up to: 7.0
 Requires PHP: 8.1
-Stable tag: 2.2.2
+Stable tag: 2.2.3
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -74,6 +74,9 @@ Administrators see the optional support notice only on Vemoro SocialFeed adminis
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.2.3 =
+* Fixes media synchronization when WordPress file utilities have not been loaded yet.
 
 = 2.2.2 =
 * Replaces the WordPress.org banner and icon with official Vemoro brand assets.
