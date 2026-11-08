@@ -185,7 +185,6 @@ final class SyncRecoveryTest extends WP_UnitTestCase {
 
 	private function process( Media $media ): SyncResult {
 		$method = new ReflectionMethod( InstagramSyncService::class, 'syncMedia' );
-		$method->setAccessible( true );
 		$result = new SyncResult();
 		$method->invoke( $this->service(), $media, $result, Config::defaults() );
 		return $result;

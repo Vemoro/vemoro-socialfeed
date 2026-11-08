@@ -112,7 +112,6 @@ final class MediaDownloadServiceTest extends WP_UnitTestCase {
 		$tokens = new TokenService( new SecretStore(), $logs );
 		$sync = new InstagramSyncService( new InstagramApiClient( $tokens ), $tokens, $posts, new MediaDownloadService( $posts ), new SyncLock(), $logs );
 		$method = new ReflectionMethod( $sync, 'syncMedia' );
-		$method->setAccessible( true );
 		$data['like_count'] = 2;
 		$data['media_url'] = 'https://expired.example/new-signed-url';
 		$changed = Media::fromArray( $data );
