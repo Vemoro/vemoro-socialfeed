@@ -21,8 +21,14 @@ final class MediaDownloadService {
 	private function download( Media $media, string $url, bool $video, int $parentPostId ): int {
 		$existing = $this->posts->index( $media->id );
 		$key      = $video ? 'video_attachment_id' : 'attachment_id';
-		if ( $existing && ! empty( $existing[ $key ] ) && 'inherit' === get_post_status( (int) $existing[ $key ] ) && get_attached_file( (int) $existing[ $key ] ) && file_exists( (string) get_attached_file( (int) $existing[ $key ] ) ) ) {
-			return (int) $existing[ $key ];
+		$attachmentId = (int) ( $existing[ $key ] ?? 0 );
+		$attachment   = $attachmentId > 0 ? get_post( $attachmentId ) : null;
+		// get_post_status() resolves inherited attachment status to the parent post's status.
+		if ( $attachment && 'attachment' === $attachment->post_type && 'inherit' === $attachment->post_status ) {
+			$file = get_attached_file( $attachmentId );
+			if ( $file && file_exists( $file ) ) {
+				return $attachmentId;
+			}
 		}
 		if ( ! $this->validSource( $url ) ) {
 			throw new \RuntimeException( __( 'Instagram returned an unsafe media URL.', 'vemoro-socialfeed' ) ); }
