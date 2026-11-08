@@ -95,7 +95,15 @@ Der Standardlauf lädt die neuesten 12 Beiträge alle zwei Stunden. Unterstützt
 - Cron-Hook: `vemoro_sync_instagram_feed`
 - Lock: `vemoro_sync_lock`
 
+Der Lock liegt als nicht automatisch geladene Option mit zufälligem Token und Ablaufzeit in der WordPress-Datenbank. Ein atomarer `INSERT IGNORE` vergibt genau einen Besitzer; Verlängerung, Freigabe und Übernahme abgelaufener Locks vergleichen den vollständigen gespeicherten Wert. Ein noch aktiver Transient einer älteren Plugin-Version wird beim Update berücksichtigt.
+
 Temporäre Media-URLs allein ändern den semantischen Beitrags-Hash nicht. Vorhandene, vollständige Attachments werden wiederverwendet. Karussellkinder werden separat gespeichert; ein defektes Kind bricht den übrigen Lauf nicht ab. Manuell gepflegte WordPress-Alt-Texte werden nicht überschrieben.
+
+Die Wiederverwendung prüft den gespeicherten Attachment-Status direkt am Medienobjekt. `get_post_status()` löst `inherit` zum Status des übergeordneten Beitrags auf und eignet sich deshalb nicht für diese Prüfung. Auch bei geänderten Likes, Kommentaren oder einer Vollaktualisierung bleiben gültige lokale Bilder, Videoposter, Videos und Karussellbilder erhalten. Bereits entstandene Dubletten werden durch ein Update nicht automatisch gelöscht; die Datenschutzwerkzeuge bieten eine Vorschau zur Bereinigung unreferenzierter Plugin-Medien.
+
+Ein Beitrag wird nur übersprungen, wenn auch Videodateien und sämtliche Karussellkinder vollständig vorliegen und der lokale Beitrag aktiv ist. Fehlende Dateien und fehlerhafte Kinder werden beim nächsten Lauf erneut versucht. Nach unterbrochenen Downloads können bereits gespeicherte Plugin-Medien anhand ihrer Instagram-ID und ihres Medientyps wieder zugeordnet werden. Rückkehrende oder lokal gelöschte Beiträge werden wiederhergestellt. Profilname, Permalink und Alt-Text gehören zum semantischen Hash; automatisch gepflegte Alt-Texte werden aktualisiert, manuelle Änderungen bleiben erhalten.
+
+Nur ein vollständiger Lauf ohne Medienfehler aktualisiert den Erfolgszeitpunkt und erhöht den Erfolgszähler. Fehlerhafte API-Daten gelten nicht als autoritatives Löschsignal; ein bestätigtes leeres Konto durchläuft dagegen dieselben drei Beobachtungen wie einzelne entfernte Beiträge. Die Aufbewahrung oberhalb des Beitragslimits richtet sich nach dem Beitragsdatum, unabhängig davon, ob Reels oder Karussells aktuell ausgeblendet sind. Die optionale Datenlöschung bei Deinstallation nutzt dieselbe Referenzprüfung wie die Datenschutzwerkzeuge und berücksichtigt auch unzugeordnete Plugin-Medien und Beiträge im Papierkorb.
 
 Werden Darstellungsoptionen geändert, markiert das Plugin den nächsten Lauf als Vollaktualisierung. Dabei werden alle bereits vorhandenen Beiträge im abgerufenen Bestand erneut verarbeitet, bestehende gültige Attachments aber weiterhin wiederverwendet. Der Synchronisierungs-Tab zeigt an, ob eine Vollaktualisierung aussteht.
 

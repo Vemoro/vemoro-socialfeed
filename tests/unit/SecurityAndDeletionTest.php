@@ -6,6 +6,28 @@ use Vemoro\SocialFeed\Frontend\FeedRenderer;
 use Vemoro\SocialFeed\Repository\PostRepository;
 
 final class SecurityAndDeletionTest extends WP_UnitTestCase {
+	public function test_delete_all_does_not_mistake_its_own_mapping_for_an_external_reference(): void {
+		$attachment = wp_insert_attachment( array( 'post_status' => 'inherit', 'post_mime_type' => 'image/jpeg' ) );
+		update_post_meta( $attachment, '_vemoro_owned', '1' );
+		$media = Vemoro\SocialFeed\Domain\Media::fromArray( array( 'id' => 'self-reference-test', 'media_type' => 'IMAGE' ) );
+		$posts = new PostRepository();
+		$saved = $posts->save( $media, $attachment );
+		wp_update_post( array( 'ID' => $attachment, 'post_parent' => $saved['post_id'] ) );
+		$result = $posts->deleteAll();
+		$this->assertSame( 1, $result['attachments'] );
+		$this->assertSame( 0, $result['retained_attachments'] );
+		$this->assertNull( get_post( $attachment ) );
+	}
+	public function test_user_level_is_not_mistaken_for_a_media_reference(): void {
+		global $wpdb;
+		$attachment = wp_insert_attachment( array( 'post_status' => 'inherit', 'post_mime_type' => 'image/jpeg' ) );
+		update_post_meta( $attachment, '_vemoro_owned', '1' );
+		$user = self::factory()->user->create();
+		update_user_meta( $user, $wpdb->prefix . 'user_level', $attachment );
+		$result = ( new PostRepository() )->cleanupOrphanedOwnedMedia();
+		$this->assertSame( 1, $result['deleted'] );
+		$this->assertNull( get_post( $attachment ) );
+	}
 	public function test_oauth_state_is_one_time_and_user_bound(): void {
 		$state='0123456789abcdef0123456789abcdef';set_transient('vemoro_oauth_state_1',hash('sha256',$state),600);$oauth=new OAuthService();
 		$this->assertTrue($oauth->hasPendingState(1));$this->assertFalse($oauth->hasPendingState(2));

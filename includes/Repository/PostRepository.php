@@ -18,7 +18,8 @@ final class PostRepository {
 	public function findPostId( string $mediaId ): int {
 		global $wpdb;
 		$table = $wpdb->prefix . 'vemoro_instagram_media';
-		return (int) $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM %i WHERE media_id = %s AND parent_media_id = ''", $table, $mediaId ) );
+		$postId = (int) $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM %i WHERE media_id = %s AND parent_media_id = ''", $table, $mediaId ) );
+		return $postId > 0 && Config::POST_TYPE === get_post_type( $postId ) ? $postId : 0;
 	}
 
 	public function save( Media $media, int $attachmentId, int $videoAttachmentId = 0 ): array {
@@ -61,7 +62,7 @@ final class PostRepository {
 				'_vemoro_comments_count'      => $media->commentsCount,
 			);
 			foreach ( $meta as $key => $value ) {
-				update_post_meta( $postId, $key, $value ); }
+				update_post_meta( $postId, $key, wp_slash( $value ) ); }
 			delete_post_meta( $postId, '_vemoro_missing_since' );
 			if ( $attachmentId ) {
 				set_post_thumbnail( $postId, $attachmentId ); }
@@ -99,7 +100,7 @@ final class PostRepository {
 
 	/** @param array<int,string> $seen */
 	public function markMissing( array $seen, string $oldestTimestamp, string $behavior, int $graceHours = 0 ): int {
-		if ( ! $seen || ! $oldestTimestamp ) {
+		if ( ! $oldestTimestamp ) {
 			return 0; }
 		$query   = new \WP_Query(
 			array(
@@ -168,47 +169,9 @@ final class PostRepository {
 			)
 		);
 		$limit       = max( 1, $limit );
-		$keptPostIds = get_posts(
-			array(
-				'post_type'      => Config::POST_TYPE,
-				'post_status'    => 'publish',
-				'posts_per_page' => $limit,
-				'fields'         => 'ids',
-				'orderby'        => 'date',
-				'order'          => 'DESC',
-				'meta_query'     => array(
-					'relation' => 'AND',
-					array(
-						'key'   => '_vemoro_status',
-						'value' => 'active',
-					),
-					array(
-						'relation' => 'OR',
-						array(
-							'key'     => '_vemoro_exists',
-							'compare' => 'NOT EXISTS',
-						),
-						array(
-							'key'   => '_vemoro_exists',
-							'value' => '1',
-						),
-					),
-					array(
-						'relation' => 'OR',
-						array(
-							'key'     => '_vemoro_display_enabled',
-							'compare' => 'NOT EXISTS',
-						),
-						array(
-							'key'   => '_vemoro_display_enabled',
-							'value' => '1',
-						),
-					),
-				),
-			)
-		);
 		$allPostIds  = array_values( array_map( 'intval', $allPostIds ) );
-		$keptPostIds = array_values( array_map( 'intval', $keptPostIds ) );
+		// Display filters must not turn recently synchronized posts into deletion candidates.
+		$keptPostIds = array_slice( $allPostIds, 0, $limit );
 		foreach ( $keptPostIds as $postId ) {
 			delete_post_meta( $postId, '_vemoro_excess_since' );}
 		$candidates = array_values( array_diff( $allPostIds, $keptPostIds ) );
@@ -479,7 +442,14 @@ final class PostRepository {
 				return true;
 			}
 		}
-		if ( $wpdb->get_var( $wpdb->prepare( "SELECT post_id FROM {$wpdb->postmeta} WHERE post_id <> %d AND meta_key NOT IN ('_wp_attachment_metadata','_wp_attachment_backup_sizes','_wp_attached_file') AND (meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s)) LIMIT 1", $attachmentId, (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId ) ) ) {
+		$meta_sql = "SELECT post_id FROM %i WHERE post_id <> %d AND meta_key NOT IN ('_wp_attachment_metadata','_wp_attachment_backup_sizes','_wp_attached_file') AND (meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s))";
+		$meta_args = array( $wpdb->postmeta, $attachmentId, (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId );
+		if ( $pluginPostIds ) {
+			$meta_sql .= ' AND post_id NOT IN (' . implode( ',', array_fill( 0, count( $pluginPostIds ), '%d' ) ) . ')';
+			$meta_args = array_merge( $meta_args, array_map( 'intval', $pluginPostIds ) );
+		}
+		$meta_sql .= ' LIMIT 1';
+		if ( $wpdb->get_var( $wpdb->prepare( $meta_sql, $meta_args ) ) ) { // phpcs:ignore PluginCheck.Security.DirectDB.UnescapedDBParameter, WordPress.DB.PreparedSQL.NotPrepared -- Only fixed SQL and generated placeholders are combined; all values are prepared.
 			return true; }
 		if ( (int) get_option( 'site_icon' ) === $attachmentId || (int) get_theme_mod( 'custom_logo' ) === $attachmentId ) {
 			return true; }
@@ -487,6 +457,6 @@ final class PostRepository {
 			return true; }
 		if ( $wpdb->get_var( $wpdb->prepare( "SELECT meta_id FROM {$wpdb->termmeta} WHERE meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s) LIMIT 1", (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId ) ) ) {
 			return true; }
-		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT umeta_id FROM {$wpdb->usermeta} WHERE meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s) LIMIT 1", (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId ) );
+		return (bool) $wpdb->get_var( $wpdb->prepare( "SELECT umeta_id FROM {$wpdb->usermeta} WHERE meta_key NOT REGEXP '(^|_)user_level$' AND (meta_value = %s OR meta_value LIKE %s OR meta_value LIKE %s OR (meta_key REGEXP %s AND meta_value LIKE %s)) LIMIT 1", (string) $attachmentId, $urlPattern, $jsonId, $mediaKeyPattern, $serializedId ) );
 	}
 }

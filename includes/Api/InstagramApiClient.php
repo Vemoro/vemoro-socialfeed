@@ -33,8 +33,12 @@ final class InstagramApiClient {
 			}
 			++$pages;
 			$body = $this->request( $url, 'media_list' );
-			foreach ( (array) ( $body['data'] ?? array() ) as $row ) {
+			if ( ! isset( $body['data'] ) || ! is_array( $body['data'] ) ) {
+				throw new ApiException( __( 'Instagram returned invalid media data.', 'vemoro-socialfeed' ), 200, 0, true, 'media_list' );
+			}
+			foreach ( $body['data'] as $row ) {
 				if ( ! is_array( $row ) ) {
+					$validResponse = false;
 					continue; }
 				try {
 					$items[] = Media::fromArray( $row );

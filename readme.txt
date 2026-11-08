@@ -2,9 +2,9 @@
 Contributors: vemoro
 Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.2.3
+Stable tag: 2.2.4
 Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
@@ -74,6 +74,16 @@ Administrators see the optional support notice only on Vemoro SocialFeed adminis
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.2.4 =
+* Reuses existing local images, video posters, videos and carousel media when synchronization updates a post or performs a full refresh, preventing duplicate Media Library uploads.
+* Retries incomplete videos and carousels, restores returning or locally deleted posts, and reuses media left by interrupted runs.
+* Reports partial synchronization failures accurately and rejects malformed API media responses as deletion evidence.
+* Keeps current hidden posts out of excess-media deletion and handles confirmed empty Instagram feeds.
+* Updates automatic alt text and changed profile metadata while preserving manually edited alt text and literal backslashes in captions.
+* Prevents concurrent synchronization runs and safely handles damaged encrypted tokens.
+* Preserves shared media during uninstall and removes unreferenced owned media, including unattached and trashed-post files.
+* Tests the latest stable WordPress release in CI on PHP 8.4 and 8.5, including activation, feed rendering, REST previews and uninstall.
 
 = 2.2.3 =
 * Fixes media synchronization when WordPress file utilities have not been loaded yet.

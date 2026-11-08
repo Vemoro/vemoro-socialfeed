@@ -18,11 +18,28 @@ final class MediaDownloadService {
 		return $this->download( $media, $url, true, $parentPostId );
 	}
 
+	public function isAvailable( int $attachmentId, bool $video = false ): bool {
+		$attachment = $attachmentId > 0 ? get_post( $attachmentId ) : null;
+		if ( ! $attachment || 'attachment' !== $attachment->post_type || 'inherit' !== $attachment->post_status || ! str_starts_with( $attachment->post_mime_type, $video ? 'video/' : 'image/' ) ) {
+			return false;
+		}
+		$file = get_attached_file( $attachmentId );
+		return $file && is_file( $file );
+	}
+
 	private function download( Media $media, string $url, bool $video, int $parentPostId ): int {
 		$existing = $this->posts->index( $media->id );
 		$key      = $video ? 'video_attachment_id' : 'attachment_id';
-		if ( $existing && ! empty( $existing[ $key ] ) && 'inherit' === get_post_status( (int) $existing[ $key ] ) && get_attached_file( (int) $existing[ $key ] ) && file_exists( (string) get_attached_file( (int) $existing[ $key ] ) ) ) {
-			return (int) $existing[ $key ];
+		$attachmentId = (int) ( $existing[ $key ] ?? 0 );
+		// get_post_status() resolves inherited attachment status to the parent post's status.
+		if ( ! $this->isAvailable( $attachmentId, $video ) ) {
+			$attachmentId = $this->findOwnedAttachment( $media->id, $video );
+		}
+		if ( $attachmentId ) {
+			if ( ! $video ) {
+				$this->updateAlt( $attachmentId, $media );
+			}
+			return $attachmentId;
 		}
 		if ( ! $this->validSource( $url ) ) {
 			throw new \RuntimeException( __( 'Instagram returned an unsafe media URL.', 'vemoro-socialfeed' ) ); }
@@ -62,16 +79,54 @@ final class MediaDownloadService {
 			update_post_meta( (int) $attachmentId, '_vemoro_media_id', $media->id );
 			update_post_meta( (int) $attachmentId, '_vemoro_source_host', (string) wp_parse_url( $finalUrl, PHP_URL_HOST ) );
 			if ( ! $video ) {
-				$alt = $media->altText ?: wp_trim_words( wp_strip_all_tags( $media->caption ), 20, '…' );
-				if ( $alt ) {
-					update_post_meta( (int) $attachmentId, '_wp_attachment_image_alt', sanitize_text_field( $alt ) );
-					update_post_meta( (int) $attachmentId, '_vemoro_managed_alt', sanitize_text_field( $alt ) ); }
+				$this->updateAlt( (int) $attachmentId, $media );
 			}
 			return (int) $attachmentId;
 		} finally {
 			if ( $tmp && file_exists( $tmp ) ) {
 				wp_delete_file( $tmp ); }
 		}
+	}
+
+	private function findOwnedAttachment( string $mediaId, bool $video ): int {
+		$ids = get_posts(
+			array(
+				'post_type' => 'attachment',
+				'post_status' => 'inherit',
+				'post_mime_type' => $video ? 'video' : 'image',
+				'numberposts' => -1,
+				'fields' => 'ids',
+				'orderby' => 'ID',
+				'order' => 'ASC',
+				'meta_query' => array(
+					array(
+						'key' => '_vemoro_owned',
+						'value' => '1',
+					),
+					array(
+						'key' => '_vemoro_media_id',
+						'value' => $mediaId,
+					),
+				),
+			)
+		);
+		foreach ( $ids as $id ) {
+			if ( $this->isAvailable( (int) $id, $video ) ) {
+				return (int) $id;
+			}
+		}
+		return 0;
+	}
+
+	private function updateAlt( int $attachmentId, Media $media ): void {
+		$current = (string) get_post_meta( $attachmentId, '_wp_attachment_image_alt', true );
+		$managed = (string) get_post_meta( $attachmentId, '_vemoro_managed_alt', true );
+		if ( '' !== $current && $current !== $managed ) {
+			return;
+		}
+		$alt = sanitize_text_field( $media->altText ?: wp_trim_words( wp_strip_all_tags( $media->caption ), 20, '…' ) );
+		update_post_meta( $attachmentId, '_wp_attachment_image_alt', wp_slash( $alt ) );
+		update_post_meta( $attachmentId, '_vemoro_managed_alt', wp_slash( $alt ) );
 	}
 
 	private function stream( string $url, string $target, bool $video ): string {
