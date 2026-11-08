@@ -20,7 +20,7 @@ const shortButton = button();
 const document = {
 	documentElement: { classList: new ClassList() },
 	querySelector(selector) { if (selector.includes('long-caption')) { return longButton; } if (selector.includes('short-caption')) { return shortButton; } return null; },
-	querySelectorAll(selector) { return '[data-lif-caption][data-collapsible="1"]' === selector ? [longCaption, shortCaption] : []; },
+	querySelectorAll(selector) { return '[data-vemoro-caption][data-collapsible="1"]' === selector ? [longCaption, shortCaption] : []; },
 };
 const browserWindow = { matchMedia: () => ({ matches: false }) };
 const source = fs.readFileSync(path.resolve(__dirname, '../../assets/js/frontend.js'), 'utf8');

@@ -1,10 +1,10 @@
 <?php
-namespace LocalInstagramFeed;
+namespace Vemoro\SocialFeed;
 
 final class Activation {
 	public static function activate(): void {
 		if ( version_compare( PHP_VERSION, '8.1', '<' ) ) {
-			deactivate_plugins( plugin_basename( LIF_PLUGIN_FILE ) );
+			deactivate_plugins( plugin_basename( VEMORO_PLUGIN_FILE ) );
 			wp_die( esc_html__( 'Vemoro SocialFeed for WP requires PHP 8.1 or newer.', 'vemoro-socialfeed' ) );
 		}
 		self::upgrade();
@@ -37,15 +37,15 @@ final class Activation {
 	 * Registers the local detail route during WordPress' normal init phase.
 	 */
 	public static function registerRewriteRules(): void {
-		add_rewrite_rule( '^instagram-feed/([^/]+)/?$', 'index.php?lif_detail=$matches[1]', 'top' );
+		add_rewrite_rule( '^instagram-feed/([^/]+)/?$', 'index.php?vemoro_detail=$matches[1]', 'top' );
 	}
 
 	private static function createTables(): void {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		$charset = $wpdb->get_charset_collate();
-		$media   = $wpdb->prefix . 'lif_instagram_media';
-		$logs    = $wpdb->prefix . 'lif_logs';
+		$media   = $wpdb->prefix . 'vemoro_instagram_media';
+		$logs    = $wpdb->prefix . 'vemoro_logs';
 		dbDelta(
 			"CREATE TABLE {$media} (
 			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,

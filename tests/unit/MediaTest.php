@@ -1,9 +1,17 @@
 <?php
-use LocalInstagramFeed\Domain\Media;
+use Vemoro\SocialFeed\Domain\Media;
 
 final class MediaTest extends WP_UnitTestCase {
 	public function test_maps_image_and_missing_optional_fields(): void { $media=Media::fromArray(array('id'=>'1','media_type'=>'IMAGE'));$this->assertSame('IMAGE',$media->mediaType);$this->assertSame('',$media->caption); }
 	public function test_maps_carousel_children_and_hash_ignores_temporary_urls(): void { $a=Media::fromArray(array('id'=>'1','media_type'=>'CAROUSEL_ALBUM','children'=>array('data'=>array(array('id'=>'2','media_type'=>'IMAGE','media_url'=>'https://x.example/a')))));$b=Media::fromArray(array('id'=>'1','media_type'=>'CAROUSEL_ALBUM','children'=>array('data'=>array(array('id'=>'2','media_type'=>'IMAGE','media_url'=>'https://x.example/b')))));$this->assertCount(1,$a->children);$this->assertSame($a->semanticHash(),$b->semanticHash()); }
 	public function test_maps_public_counts_and_includes_them_in_hash(): void { $a=Media::fromArray(array('id'=>'1','media_type'=>'IMAGE','like_count'=>12,'comments_count'=>3));$b=Media::fromArray(array('id'=>'1','media_type'=>'IMAGE','like_count'=>13,'comments_count'=>3));$this->assertSame(12,$a->likeCount);$this->assertSame(3,$a->commentsCount);$this->assertNotSame($a->semanticHash(),$b->semanticHash()); }
 	public function test_requires_id_and_media_type(): void { $this->expectException(InvalidArgumentException::class);Media::fromArray(array('id'=>'1')); }
+	public function test_semantic_hash_tracks_display_metadata_but_ignores_signed_media_urls(): void {
+		$data = array( 'id' => 'metadata-test', 'media_type' => 'IMAGE', 'username' => 'before', 'permalink' => 'https://www.instagram.com/p/before/', 'accessibility_caption' => 'Before', 'media_url' => 'https://cdn.example/old' );
+		$before = Media::fromArray( $data );
+		foreach ( array( 'username', 'permalink', 'accessibility_caption' ) as $key ) {
+			$this->assertNotSame( $before->semanticHash(), Media::fromArray( array_merge( $data, array( $key => 'changed' ) ) )->semanticHash() );
+		}
+		$this->assertSame( $before->semanticHash(), Media::fromArray( array_merge( $data, array( 'media_url' => 'https://cdn.example/new' ) ) )->semanticHash() );
+	}
 }

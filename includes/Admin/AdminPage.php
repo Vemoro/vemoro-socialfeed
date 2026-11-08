@@ -1,19 +1,19 @@
 <?php
-namespace LocalInstagramFeed\Admin;
+namespace Vemoro\SocialFeed\Admin;
 
-use LocalInstagramFeed\Api\ApiException;
-use LocalInstagramFeed\Api\InstagramApiClient;
-use LocalInstagramFeed\Api\OAuthService;
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\CronManager;
-use LocalInstagramFeed\Diagnostics\FailureTracker;
-use LocalInstagramFeed\Frontend\FeedRenderer;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Repository\PostRepository;
-use LocalInstagramFeed\Security\SecretStore;
-use LocalInstagramFeed\Sync\InstagramSyncService;
-use LocalInstagramFeed\Sync\SyncLock;
+use Vemoro\SocialFeed\Api\ApiException;
+use Vemoro\SocialFeed\Api\InstagramApiClient;
+use Vemoro\SocialFeed\Api\OAuthService;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\CronManager;
+use Vemoro\SocialFeed\Diagnostics\FailureTracker;
+use Vemoro\SocialFeed\Frontend\FeedRenderer;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Repository\PostRepository;
+use Vemoro\SocialFeed\Security\SecretStore;
+use Vemoro\SocialFeed\Sync\InstagramSyncService;
+use Vemoro\SocialFeed\Sync\SyncLock;
 
 final class AdminPage {
 	public function __construct( private readonly OAuthService $oauth, private readonly TokenService $tokens, private readonly InstagramApiClient $api, private readonly InstagramSyncService $sync, private readonly PostRepository $posts, private readonly LogRepository $logs, private readonly SecretStore $secrets ) {}
@@ -23,15 +23,15 @@ final class AdminPage {
 		add_action( 'admin_init', array( $this, 'settings' ) );
 		add_action( 'admin_init', array( $this, 'callback' ) );
 		add_action( 'admin_notices', array( $this, 'notice' ) );
-		add_action( 'admin_post_lif_connect', array( $this, 'connect' ) );
-		add_action( 'admin_post_lif_disconnect', array( $this, 'disconnect' ) );
-		add_action( 'admin_post_lif_refresh_token', array( $this, 'refresh' ) );
-		add_action( 'admin_post_lif_check_connection', array( $this, 'check' ) );
-		add_action( 'admin_post_lif_cleanup_orphaned_media', array( $this, 'cleanupOrphanedMedia' ) );
-		add_action( 'admin_post_lif_delete_all_posts', array( $this, 'deleteAllPosts' ) );
-		add_action( 'wp_ajax_lif_sync', array( $this, 'ajaxSync' ) );
-		add_action( 'wp_ajax_lif_sync_progress', array( $this, 'ajaxProgress' ) );
-		add_action( 'wp_ajax_lif_clear_cache', array( $this, 'ajaxClearCache' ) );
+		add_action( 'admin_post_vemoro_connect', array( $this, 'connect' ) );
+		add_action( 'admin_post_vemoro_disconnect', array( $this, 'disconnect' ) );
+		add_action( 'admin_post_vemoro_refresh_token', array( $this, 'refresh' ) );
+		add_action( 'admin_post_vemoro_check_connection', array( $this, 'check' ) );
+		add_action( 'admin_post_vemoro_cleanup_orphaned_media', array( $this, 'cleanupOrphanedMedia' ) );
+		add_action( 'admin_post_vemoro_delete_all_posts', array( $this, 'deleteAllPosts' ) );
+		add_action( 'wp_ajax_vemoro_sync', array( $this, 'ajaxSync' ) );
+		add_action( 'wp_ajax_vemoro_sync_progress', array( $this, 'ajaxProgress' ) );
+		add_action( 'wp_ajax_vemoro_clear_cache', array( $this, 'ajaxClearCache' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'assets' ) );
 		add_action( 'update_option_' . Config::OPTION, array( $this, 'settingsUpdated' ), 10, 2 );
 	}
@@ -56,13 +56,11 @@ final class AdminPage {
 		add_submenu_page( 'vemoro-socialfeed', __( 'Synced Instagram posts', 'vemoro-socialfeed' ), __( 'Synced posts', 'vemoro-socialfeed' ), 'manage_options', 'edit.php?post_type=' . Config::POST_TYPE );
 		// Keep callbacks created by pre-2.1 installations routable without
 		// exposing the old slug as a duplicate menu entry.
-		add_submenu_page( 'vemoro-socialfeed', __( 'Vemoro SocialFeed settings', 'vemoro-socialfeed' ), __( 'Settings', 'vemoro-socialfeed' ), 'manage_options', 'local-instagram-feed', array( $this, 'render' ) );
-		remove_submenu_page( 'vemoro-socialfeed', 'local-instagram-feed' );
 	}
 
 	public function settings(): void {
 		register_setting(
-			'lif_settings_group',
+			'vemoro_settings_group',
 			Config::OPTION,
 			array(
 				'type'              => 'array',
@@ -79,8 +77,8 @@ final class AdminPage {
 		$out                   = Config::defaults();
 		$out['oauth_provider'] = 'custom' === (string) ( $in['oauth_provider'] ?? '' ) ? 'custom' : 'vemoro';
 		$out['connect_url']    = Config::DEFAULT_CONNECT_URL;
-		$out['app_id']         = defined( 'LIF_INSTAGRAM_APP_ID' ) ? '' : preg_replace( '/\D+/', '', (string) ( $in['app_id'] ?? '' ) );
-		if ( ! defined( 'LIF_INSTAGRAM_APP_SECRET' ) && ! empty( $in['app_secret'] ) ) {
+		$out['app_id']         = defined( 'VEMORO_INSTAGRAM_APP_ID' ) ? '' : preg_replace( '/\D+/', '', (string) ( $in['app_id'] ?? '' ) );
+		if ( ! defined( 'VEMORO_INSTAGRAM_APP_SECRET' ) && ! empty( $in['app_secret'] ) ) {
 			if ( ! $this->secrets->store( 'app_secret', (string) $in['app_secret'] ) ) {
 				add_settings_error( Config::OPTION, 'secret', __( 'The App Secret could not be encrypted. Define it in wp-config.php.', 'vemoro-socialfeed' ) ); }
 		}
@@ -94,7 +92,7 @@ final class AdminPage {
 		$out['terms_accepted_by']     = $out['terms_accepted'] ? ( Config::TERMS_VERSION === (string) ( $old['terms_version'] ?? '' ) ? (int) ( $old['terms_accepted_by'] ?? 0 ) : get_current_user_id() ) : 0;
 		$out['post_limit']            = max( 1, min( 100, (int) ( $in['post_limit'] ?? 12 ) ) );
 		$out['caption_length']        = max( 0, min( 5000, (int) ( $in['caption_length'] ?? 300 ) ) );
-		$out['sync_interval']         = in_array( (string) ( $in['sync_interval'] ?? '' ), array( 'lif_15_minutes', 'lif_30_minutes', 'hourly', 'lif_two_hours', 'lif_six_hours', 'daily' ), true ) ? (string) $in['sync_interval'] : 'lif_two_hours';
+		$out['sync_interval']         = in_array( (string) ( $in['sync_interval'] ?? '' ), array( 'vemoro_15_minutes', 'vemoro_30_minutes', 'hourly', 'vemoro_two_hours', 'vemoro_six_hours', 'daily' ), true ) ? (string) $in['sync_interval'] : 'vemoro_two_hours';
 		$out['deleted_behavior']      = in_array( (string) ( $in['deleted_behavior'] ?? '' ), array( 'inactive', 'trash', 'delete' ), true ) ? (string) $in['deleted_behavior'] : 'inactive';
 		$out['missing_grace_hours']   = in_array( (int) ( $in['missing_grace_hours'] ?? 0 ), array( 0, 12, 24, 48 ), true ) ? (int) $in['missing_grace_hours'] : 0;
 		$out['excess_retention_days'] = in_array( (int) ( $in['excess_retention_days'] ?? 30 ), array( -1, 0, 7, 30, 90, 180, 365 ), true ) ? (int) $in['excess_retention_days'] : 30;
@@ -116,7 +114,7 @@ final class AdminPage {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			return;
 		} $tab = sanitize_key( Request::query( 'tab' ) ?: 'connection' );
-		echo '<div class="wrap lif-admin"><div class="lif-brand"><img src="' . esc_url( LIF_PLUGIN_URL . 'assets/images/vemoro-logo.svg' ) . '" alt="Vemoro"><h1>' . esc_html__( 'SocialFeed for WP', 'vemoro-socialfeed' ) . '</h1></div><nav class="nav-tab-wrapper">';
+		echo '<div class="wrap vemoro-admin"><div class="vemoro-brand"><img src="' . esc_url( VEMORO_PLUGIN_URL . 'assets/images/vemoro-logo.svg' ) . '" alt="Vemoro"><h1>' . esc_html__( 'SocialFeed for WP', 'vemoro-socialfeed' ) . '</h1></div><nav class="nav-tab-wrapper">';
 		$tabs = array(
 			'connection'  => __( 'Connection', 'vemoro-socialfeed' ),
 			'sync'        => __( 'Synchronization', 'vemoro-socialfeed' ),
@@ -148,19 +146,19 @@ final class AdminPage {
 	private function connection(): void {
 		$meta   = (array) get_option( Config::TOKEN_OPTION, array() );
 		$status = (array) get_option( Config::STATUS_OPTION, array() );
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Connection status', 'vemoro-socialfeed' ) . '</h2><p><strong>' . ( $this->tokens->isConnected() ? esc_html__( 'Connected', 'vemoro-socialfeed' ) : esc_html__( 'Not connected', 'vemoro-socialfeed' ) ) . '</strong></p>';
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Connection status', 'vemoro-socialfeed' ) . '</h2><p><strong>' . ( $this->tokens->isConnected() ? esc_html__( 'Connected', 'vemoro-socialfeed' ) : esc_html__( 'Not connected', 'vemoro-socialfeed' ) ) . '</strong></p>';
 		if ( $this->tokens->isConnected() ) {
 			echo '<p>' . esc_html__( 'Account ID:', 'vemoro-socialfeed' ) . ' ' . esc_html( $this->mask( $this->tokens->userId() ) ) . '<br>' . esc_html__( 'Token expires:', 'vemoro-socialfeed' ) . ' ' . esc_html( wp_date( 'Y-m-d H:i', (int) $this->tokens->expiresAt() ) ) . '</p>';}
 		if ( ! empty( $status['last_error'] ) ) {
 			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html__( 'Last connection or synchronization error:', 'vemoro-socialfeed' ) . '</strong> ' . esc_html( (string) $status['last_error'] ) . ' ' . esc_html__( 'The local data was retained. You can reconnect the Instagram account without deleting it.', 'vemoro-socialfeed' ) . '</p></div>';}
-		echo '<p>' . esc_html__( 'Redirect URI:', 'vemoro-socialfeed' ) . ' <code>' . esc_html( Config::redirectUri() ) . '</code></p><div class="lif-actions">';
+		echo '<p>' . esc_html__( 'Redirect URI:', 'vemoro-socialfeed' ) . ' <code>' . esc_html( Config::redirectUri() ) . '</code></p><div class="vemoro-actions">';
 		$connect_label = $this->tokens->isConnected() ? __( 'Reconnect with Instagram', 'vemoro-socialfeed' ) : __( 'Connect with Instagram', 'vemoro-socialfeed' );
 		if ( ! $this->tokens->isConnected() ) {
-			$buttons = $this->oauth->isHosted() ? $this->hostedConnectForm( $connect_label ) : $this->actionButton( 'lif_connect', $connect_label, 'primary' );
+			$buttons = $this->oauth->isHosted() ? $this->hostedConnectForm( $connect_label ) : $this->actionButton( 'vemoro_connect', $connect_label, 'primary' );
 		} else {
-			$buttons  = $this->oauth->isHosted() ? $this->hostedConnectForm( $connect_label ) : $this->actionButton( 'lif_connect', $connect_label, 'primary' );
-			$buttons .= $this->actionButton( 'lif_check_connection', __( 'Check connection', 'vemoro-socialfeed' ) );
-			$buttons .= $this->actionButton( 'lif_refresh_token', __( 'Refresh token', 'vemoro-socialfeed' ) );
+			$buttons  = $this->oauth->isHosted() ? $this->hostedConnectForm( $connect_label ) : $this->actionButton( 'vemoro_connect', $connect_label, 'primary' );
+			$buttons .= $this->actionButton( 'vemoro_check_connection', __( 'Check connection', 'vemoro-socialfeed' ) );
+			$buttons .= $this->actionButton( 'vemoro_refresh_token', __( 'Refresh token', 'vemoro-socialfeed' ) );
 		}
 		echo wp_kses(
 			$buttons,
@@ -191,24 +189,24 @@ final class AdminPage {
 			)
 		) . '</div>';
 		if ( $this->tokens->isConnected() ) {
-			echo '<hr><h3>' . esc_html__( 'Permanently disconnect', 'vemoro-socialfeed' ) . '</h3><p>' . esc_html__( 'Temporary API or token errors do not delete data. Reconnect the account where possible. If access has been permanently revoked, disconnecting deletes all Instagram Platform Data stored by the plugin. Media created by the plugin are deleted only when they are not referenced elsewhere in WordPress.', 'vemoro-socialfeed' ) . '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="lif_disconnect">';
-			wp_nonce_field( 'lif_disconnect' );
-			echo '<p><label><input type="checkbox" name="confirm_disconnect" value="1" required> ' . esc_html__( 'I understand that the Instagram connection and all synchronized Platform Data will be permanently deleted.', 'vemoro-socialfeed' ) . '</label></p><p><button type="submit" class="button lif-delete-button">' . esc_html__( 'Disconnect and delete Instagram data', 'vemoro-socialfeed' ) . '</button></p></form>';}
+			echo '<hr><h3>' . esc_html__( 'Permanently disconnect', 'vemoro-socialfeed' ) . '</h3><p>' . esc_html__( 'Temporary API or token errors do not delete data. Reconnect the account where possible. If access has been permanently revoked, disconnecting deletes all Instagram Platform Data stored by the plugin. Media created by the plugin are deleted only when they are not referenced elsewhere in WordPress.', 'vemoro-socialfeed' ) . '</p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="vemoro_disconnect">';
+			wp_nonce_field( 'vemoro_disconnect' );
+			echo '<p><label><input type="checkbox" name="confirm_disconnect" value="1" required> ' . esc_html__( 'I understand that the Instagram connection and all synchronized Platform Data will be permanently deleted.', 'vemoro-socialfeed' ) . '</label></p><p><button type="submit" class="button vemoro-delete-button">' . esc_html__( 'Disconnect and delete Instagram data', 'vemoro-socialfeed' ) . '</button></p></form>';}
 		echo '</div>';
 		$this->credentialsForm();
 	}
 
 	private function credentialsForm(): void {
 		$s = Config::settings();
-		echo '<form method="post" action="options.php" class="lif-card"><h2>' . esc_html__( 'Instagram connection method', 'vemoro-socialfeed' ) . '</h2>';
-		settings_fields( 'lif_settings_group' );
-		echo '<p><label><input type="radio" class="lif-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="vemoro" ' . checked( 'vemoro', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Vemoro Login (recommended)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'No Meta App ID or App Secret is required in WordPress. The login is handled by the Vemoro connection service.', 'vemoro-socialfeed' ) . '</span></p>';
-		echo '<div id="lif-hosted-oauth-settings" ' . ( 'vemoro' === $s['oauth_provider'] ? '' : 'hidden' ) . '><p><label><input type="checkbox" name="' . esc_attr( Config::OPTION ) . '[terms_accepted]" value="1" ' . checked( Config::termsAccepted(), true, false ) . '> ' . esc_html__( 'I accept the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/nutzungsbedingungen/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Terms of Use', 'vemoro-socialfeed' ) . '</a> ' . esc_html__( 'and acknowledge the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/datenschutz/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Privacy Notice', 'vemoro-socialfeed' ) . '</a>.</label></p></div>';
-		echo '<p><label><input type="radio" class="lif-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="custom" ' . checked( 'custom', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Own Meta app (expert mode)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'Use your own Meta app and callback configuration.', 'vemoro-socialfeed' ) . '</span></p>';
-		echo '<div id="lif-custom-app-settings" ' . ( 'custom' === $s['oauth_provider'] ? '' : 'hidden' ) . '><h3>' . esc_html__( 'Expert-mode credentials', 'vemoro-socialfeed' ) . '</h3>';
-		echo '<table class="form-table"><tr><th><label for="lif-app-id">' . esc_html__( 'Meta App ID', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-app-id" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( defined( 'LIF_INSTAGRAM_APP_ID' ) ? '' : $s['app_id'] ) . '" class="regular-text" ' . ( defined( 'LIF_INSTAGRAM_APP_ID' ) ? 'disabled' : '' ) . '></td></tr>';
-		echo '<tr><th><label for="lif-secret">' . esc_html__( 'Meta App Secret', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-secret" type="password" autocomplete="new-password" name="' . esc_attr( Config::OPTION ) . '[app_secret]" value="" class="regular-text" ' . ( defined( 'LIF_INSTAGRAM_APP_SECRET' ) ? 'disabled' : '' ) . '><p class="description">' . esc_html__( 'Stored encrypted; leave blank to keep the current value. wp-config.php constants take precedence.', 'vemoro-socialfeed' ) . '</p></td></tr>';
-		echo '<tr><th><label for="lif-redirect">' . esc_html__( 'Redirect URI', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-redirect" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( Config::redirectUri() ) . '" class="large-text"><p class="description">' . esc_html__( 'Enter this URI in Meta exactly as displayed. OAuth callback URIs must not contain query parameters.', 'vemoro-socialfeed' ) . '</p></td></tr><tr><th><label for="lif-version">' . esc_html__( 'API version', 'vemoro-socialfeed' ) . '</label></th><td><input id="lif-version" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"></td></tr></table></div>';
+		echo '<form method="post" action="options.php" class="vemoro-card"><h2>' . esc_html__( 'Instagram connection method', 'vemoro-socialfeed' ) . '</h2>';
+		settings_fields( 'vemoro_settings_group' );
+		echo '<p><label><input type="radio" class="vemoro-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="vemoro" ' . checked( 'vemoro', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Vemoro Login (recommended)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'No Meta App ID or App Secret is required in WordPress. The login is handled by the Vemoro connection service.', 'vemoro-socialfeed' ) . '</span></p>';
+		echo '<div id="vemoro-hosted-oauth-settings" ' . ( 'vemoro' === $s['oauth_provider'] ? '' : 'hidden' ) . '><p><label><input type="checkbox" name="' . esc_attr( Config::OPTION ) . '[terms_accepted]" value="1" ' . checked( Config::termsAccepted(), true, false ) . '> ' . esc_html__( 'I accept the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/nutzungsbedingungen/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Terms of Use', 'vemoro-socialfeed' ) . '</a> ' . esc_html__( 'and acknowledge the', 'vemoro-socialfeed' ) . ' <a href="https://vemoro.de/datenschutz/" target="_blank" rel="noopener noreferrer">' . esc_html__( 'Privacy Notice', 'vemoro-socialfeed' ) . '</a>.</label></p></div>';
+		echo '<p><label><input type="radio" class="vemoro-oauth-provider" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="custom" ' . checked( 'custom', $s['oauth_provider'], false ) . '> <strong>' . esc_html__( 'Own Meta app (expert mode)', 'vemoro-socialfeed' ) . '</strong></label><br><span class="description">' . esc_html__( 'Use your own Meta app and callback configuration.', 'vemoro-socialfeed' ) . '</span></p>';
+		echo '<div id="vemoro-custom-app-settings" ' . ( 'custom' === $s['oauth_provider'] ? '' : 'hidden' ) . '><h3>' . esc_html__( 'Expert-mode credentials', 'vemoro-socialfeed' ) . '</h3>';
+		echo '<table class="form-table"><tr><th><label for="vemoro-app-id">' . esc_html__( 'Meta App ID', 'vemoro-socialfeed' ) . '</label></th><td><input id="vemoro-app-id" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( defined( 'VEMORO_INSTAGRAM_APP_ID' ) ? '' : $s['app_id'] ) . '" class="regular-text" ' . ( defined( 'VEMORO_INSTAGRAM_APP_ID' ) ? 'disabled' : '' ) . '></td></tr>';
+		echo '<tr><th><label for="vemoro-secret">' . esc_html__( 'Meta App Secret', 'vemoro-socialfeed' ) . '</label></th><td><input id="vemoro-secret" type="password" autocomplete="new-password" name="' . esc_attr( Config::OPTION ) . '[app_secret]" value="" class="regular-text" ' . ( defined( 'VEMORO_INSTAGRAM_APP_SECRET' ) ? 'disabled' : '' ) . '><p class="description">' . esc_html__( 'Stored encrypted; leave blank to keep the current value. wp-config.php constants take precedence.', 'vemoro-socialfeed' ) . '</p></td></tr>';
+		echo '<tr><th><label for="vemoro-redirect">' . esc_html__( 'Redirect URI', 'vemoro-socialfeed' ) . '</label></th><td><input id="vemoro-redirect" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( Config::redirectUri() ) . '" class="large-text"><p class="description">' . esc_html__( 'Enter this URI in Meta exactly as displayed. OAuth callback URIs must not contain query parameters.', 'vemoro-socialfeed' ) . '</p></td></tr><tr><th><label for="vemoro-version">' . esc_html__( 'API version', 'vemoro-socialfeed' ) . '</label></th><td><input id="vemoro-version" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"></td></tr></table></div>';
 		foreach ( Config::settings() as $key => $value ) {
 			if ( ! in_array( $key, array( 'oauth_provider', 'connect_url', 'app_id', 'app_secret', 'redirect_uri', 'api_version', 'terms_accepted', 'terms_accepted_at', 'terms_accepted_by', 'terms_version' ), true ) ) {
 				echo '<input type="hidden" name="' . esc_attr( Config::OPTION ) . '[' . esc_attr( $key ) . ']" value="' . esc_attr( is_bool( $value ) ? ( $value ? '1' : '0' ) : $value ) . '">';}
@@ -221,12 +219,12 @@ final class AdminPage {
 		$status  = (array) get_option( Config::STATUS_OPTION, array() );
 		$pending = (int) get_option( Config::REFRESH_GENERATION_OPTION, 0 ) > (int) get_option( Config::APPLIED_REFRESH_GENERATION_OPTION, 0 );
 		$next    = CronManager::nextScheduled();
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Synchronization', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Last successful run:', 'vemoro-socialfeed' ) . ' ' . esc_html( ! empty( $status['last_success'] ) ? wp_date( 'Y-m-d H:i:s', (int) $status['last_success'] ) : __( 'Never', 'vemoro-socialfeed' ) ) . '<br>' . esc_html__( 'Next scheduled run:', 'vemoro-socialfeed' ) . ' ' . esc_html( $next ? wp_date( 'Y-m-d H:i:s', $next ) : __( 'Not scheduled', 'vemoro-socialfeed' ) ) . '<br>' . esc_html__( 'Local records:', 'vemoro-socialfeed' ) . ' ' . (int) $this->posts->count() . '<br>' . esc_html__( 'Full refresh pending:', 'vemoro-socialfeed' ) . ' ' . esc_html( $pending ? __( 'Yes', 'vemoro-socialfeed' ) : __( 'No', 'vemoro-socialfeed' ) ) . '</p><button class="button button-primary" id="lif-sync-now">' . esc_html__( 'Synchronize now', 'vemoro-socialfeed' ) . '</button><div id="lif-sync-progress" class="lif-progress" hidden><span></span></div><pre id="lif-sync-result"></pre></div>'; }
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Synchronization', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Last successful run:', 'vemoro-socialfeed' ) . ' ' . esc_html( ! empty( $status['last_success'] ) ? wp_date( 'Y-m-d H:i:s', (int) $status['last_success'] ) : __( 'Never', 'vemoro-socialfeed' ) ) . '<br>' . esc_html__( 'Next scheduled run:', 'vemoro-socialfeed' ) . ' ' . esc_html( $next ? wp_date( 'Y-m-d H:i:s', $next ) : __( 'Not scheduled', 'vemoro-socialfeed' ) ) . '<br>' . esc_html__( 'Local records:', 'vemoro-socialfeed' ) . ' ' . (int) $this->posts->count() . '<br>' . esc_html__( 'Full refresh pending:', 'vemoro-socialfeed' ) . ' ' . esc_html( $pending ? __( 'Yes', 'vemoro-socialfeed' ) : __( 'No', 'vemoro-socialfeed' ) ) . '</p><button class="button button-primary" id="vemoro-sync-now">' . esc_html__( 'Synchronize now', 'vemoro-socialfeed' ) . '</button><div id="vemoro-sync-progress" class="vemoro-progress" hidden><span></span></div><pre id="vemoro-sync-result"></pre></div>'; }
 
 	private function settingsForm(): void {
 		$s = Config::settings();
-		echo '<form method="post" action="options.php" class="lif-card"><h2>' . esc_html__( 'Display and operation', 'vemoro-socialfeed' ) . '</h2>';
-		settings_fields( 'lif_settings_group' );
+		echo '<form method="post" action="options.php" class="vemoro-card"><h2>' . esc_html__( 'Display and operation', 'vemoro-socialfeed' ) . '</h2>';
+		settings_fields( 'vemoro_settings_group' );
 		echo '<input type="hidden" name="' . esc_attr( Config::OPTION ) . '[oauth_provider]" value="' . esc_attr( $s['oauth_provider'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[connect_url]" value="' . esc_attr( $s['connect_url'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[app_id]" value="' . esc_attr( $s['app_id'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[redirect_uri]" value="' . esc_attr( $s['redirect_uri'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[api_version]" value="' . esc_attr( $s['api_version'] ) . '"><input type="hidden" name="' . esc_attr( Config::OPTION ) . '[terms_accepted]" value="' . ( Config::termsAccepted() ? '1' : '0' ) . '">';
 		$numbers = array(
 			'post_limit'     => __( 'Posts to synchronize', 'vemoro-socialfeed' ),
@@ -241,16 +239,16 @@ final class AdminPage {
 		);
 		echo '<table class="form-table">';
 		foreach ( $numbers as $key => $label ) {
-			echo '<tr><th><label for="lif-' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th><td><input type="number" id="lif-' . esc_attr( $key ) . '" name="' . esc_attr( Config::OPTION ) . '[' . esc_attr( $key ) . ']" value="' . (int) $s[ $key ] . '"></td></tr>';}
+			echo '<tr><th><label for="vemoro-' . esc_attr( $key ) . '">' . esc_html( $label ) . '</label></th><td><input type="number" id="vemoro-' . esc_attr( $key ) . '" name="' . esc_attr( Config::OPTION ) . '[' . esc_attr( $key ) . ']" value="' . (int) $s[ $key ] . '"></td></tr>';}
 		$select_rows = '<tr><th>' . esc_html__( 'Synchronization interval', 'vemoro-socialfeed' ) . '</th><td>' . $this->select(
 			'sync_interval',
 			$s['sync_interval'],
 			array(
-				'lif_15_minutes' => __( '15 minutes', 'vemoro-socialfeed' ),
-				'lif_30_minutes' => __( '30 minutes', 'vemoro-socialfeed' ),
+				'vemoro_15_minutes' => __( '15 minutes', 'vemoro-socialfeed' ),
+				'vemoro_30_minutes' => __( '30 minutes', 'vemoro-socialfeed' ),
 				'hourly'         => __( 'Hourly', 'vemoro-socialfeed' ),
-				'lif_two_hours'  => __( '2 hours', 'vemoro-socialfeed' ),
-				'lif_six_hours'  => __( '6 hours', 'vemoro-socialfeed' ),
+				'vemoro_two_hours'  => __( '2 hours', 'vemoro-socialfeed' ),
+				'vemoro_six_hours'  => __( '6 hours', 'vemoro-socialfeed' ),
 				'daily'          => __( 'Daily', 'vemoro-socialfeed' ),
 			)
 		) . '</td></tr><tr><th>' . esc_html__( 'Delete posts exceeding the limit', 'vemoro-socialfeed' ) . '</th><td>' . $this->select(
@@ -316,20 +314,20 @@ final class AdminPage {
 		echo '</form>'; }
 
 	private function privacy(): void {
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Privacy by design', 'vemoro-socialfeed' ) . '</h2><ul><li>✓ ' . esc_html__( 'External Meta scripts: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Instagram iframes: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Meta CDN images in the frontend: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Browser API calls: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Local media: yes', 'vemoro-socialfeed' ) . '</li><li>' . esc_html__( 'External Instagram links:', 'vemoro-socialfeed' ) . ' ' . ( ! empty( Config::settings()['show_link'] ) ? esc_html__( 'enabled', 'vemoro-socialfeed' ) : esc_html__( 'disabled', 'vemoro-socialfeed' ) ) . '</li></ul><p>' . esc_html__( 'Visitors do not connect to Meta when a page is loaded. The website operator’s server communicates with the Instagram API only during OAuth, synchronization and token maintenance.', 'vemoro-socialfeed' ) . '</p><p>' . esc_html__( 'Temporary API or token errors do not trigger deletion. Administrators can reconnect the account. If access is permanently revoked, use “Disconnect and delete Instagram data” to remove all API-derived Platform Data; plugin-owned media referenced elsewhere in WordPress are retained.', 'vemoro-socialfeed' ) . '</p><p>' . esc_html__( 'Add an appropriate description to your privacy policy. This technical information is not legal advice.', 'vemoro-socialfeed' ) . '</p></div>';
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Privacy by design', 'vemoro-socialfeed' ) . '</h2><ul><li>✓ ' . esc_html__( 'External Meta scripts: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Instagram iframes: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Meta CDN images in the frontend: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Browser API calls: no', 'vemoro-socialfeed' ) . '</li><li>✓ ' . esc_html__( 'Local media: yes', 'vemoro-socialfeed' ) . '</li><li>' . esc_html__( 'External Instagram links:', 'vemoro-socialfeed' ) . ' ' . ( ! empty( Config::settings()['show_link'] ) ? esc_html__( 'enabled', 'vemoro-socialfeed' ) : esc_html__( 'disabled', 'vemoro-socialfeed' ) ) . '</li></ul><p>' . esc_html__( 'Visitors do not connect to Meta when a page is loaded. The website operator’s server communicates with the Instagram API only during OAuth, synchronization and token maintenance.', 'vemoro-socialfeed' ) . '</p><p>' . esc_html__( 'Temporary API or token errors do not trigger deletion. Administrators can reconnect the account. If access is permanently revoked, use “Disconnect and delete Instagram data” to remove all API-derived Platform Data; plugin-owned media referenced elsewhere in WordPress are retained.', 'vemoro-socialfeed' ) . '</p><p>' . esc_html__( 'Add an appropriate description to your privacy policy. This technical information is not legal advice.', 'vemoro-socialfeed' ) . '</p></div>';
 		$orphans = $this->posts->orphanedOwnedMediaSummary();
 		/* translators: 1: number of media files, 2: maximum total file size. */
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Clean up orphaned media', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Finds media created by this plugin that are no longer assigned to the current Instagram data. Files used elsewhere in WordPress are retained and released from plugin ownership.', 'vemoro-socialfeed' ) . '</p><p><strong>' . esc_html( sprintf( __( 'Unassigned plugin media: %1$d (up to %2$s)', 'vemoro-socialfeed' ), $orphans['candidates'], size_format( $orphans['bytes'], 2 ) ) ) . '</strong></p>';
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Clean up orphaned media', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Finds media created by this plugin that are no longer assigned to the current Instagram data. Files used elsewhere in WordPress are retained and released from plugin ownership.', 'vemoro-socialfeed' ) . '</p><p><strong>' . esc_html( sprintf( __( 'Unassigned plugin media: %1$d (up to %2$s)', 'vemoro-socialfeed' ), $orphans['candidates'], size_format( $orphans['bytes'], 2 ) ) ) . '</strong></p>';
 		if ( $orphans['candidates'] > 0 ) {
-			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="lif_cleanup_orphaned_media">';
-			wp_nonce_field( 'lif_cleanup_orphaned_media' );
+			echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="vemoro_cleanup_orphaned_media">';
+			wp_nonce_field( 'vemoro_cleanup_orphaned_media' );
 			echo '<p><label><input type="checkbox" name="confirm_cleanup" value="1" required> ' . esc_html__( 'I understand that safely identified orphaned media files will be permanently deleted.', 'vemoro-socialfeed' ) . '</label></p><p><button type="submit" class="button button-secondary">' . esc_html__( 'Clean up orphaned media', 'vemoro-socialfeed' ) . '</button></p></form>'; } else {
 			echo '<p>' . esc_html__( 'No orphaned plugin media were found.', 'vemoro-socialfeed' ) . '</p>'; }
 			echo '</div>';
 			/* translators: %d is the number of currently synchronized local records. */
-			echo '<div class="lif-card lif-danger"><h2>' . esc_html__( 'Delete all synchronized posts', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Permanently deletes all locally synchronized Instagram posts, plugin mappings and unreferenced media created by this plugin. The Instagram connection and display settings are retained, so a new synchronization can start immediately.', 'vemoro-socialfeed' ) . '</p><p><strong>' . esc_html( sprintf( __( 'Current local records: %d', 'vemoro-socialfeed' ), $this->posts->count() ) ) . '</strong></p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="lif_delete_all_posts">';
-			wp_nonce_field( 'lif_delete_all_posts' );
-			echo '<p><label><input type="checkbox" name="confirm_delete" value="1" required> ' . esc_html__( 'I understand that the synchronized data will be permanently deleted.', 'vemoro-socialfeed' ) . '</label></p><p><button type="submit" class="button lif-delete-button">' . esc_html__( 'Delete all synchronized posts', 'vemoro-socialfeed' ) . '</button></p></form></div>';
+			echo '<div class="vemoro-card vemoro-danger"><h2>' . esc_html__( 'Delete all synchronized posts', 'vemoro-socialfeed' ) . '</h2><p>' . esc_html__( 'Permanently deletes all locally synchronized Instagram posts, plugin mappings and unreferenced media created by this plugin. The Instagram connection and display settings are retained, so a new synchronization can start immediately.', 'vemoro-socialfeed' ) . '</p><p><strong>' . esc_html( sprintf( __( 'Current local records: %d', 'vemoro-socialfeed' ), $this->posts->count() ) ) . '</strong></p><form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '"><input type="hidden" name="action" value="vemoro_delete_all_posts">';
+			wp_nonce_field( 'vemoro_delete_all_posts' );
+			echo '<p><label><input type="checkbox" name="confirm_delete" value="1" required> ' . esc_html__( 'I understand that the synchronized data will be permanently deleted.', 'vemoro-socialfeed' ) . '</label></p><p><button type="submit" class="button vemoro-delete-button">' . esc_html__( 'Delete all synchronized posts', 'vemoro-socialfeed' ) . '</button></p></form></div>';
 	}
 
 	private function diagnostics(): void {
@@ -338,7 +336,7 @@ final class AdminPage {
 		$orphans = $this->posts->orphanedOwnedMediaSummary();
 		$status  = (array) get_option( Config::STATUS_OPTION, array() );
 		$report  = array(
-			'Plugin'                  => LIF_VERSION,
+			'Plugin'                  => VEMORO_VERSION,
 			'WordPress'               => get_bloginfo( 'version' ),
 			'PHP'                     => PHP_VERSION,
 			'cURL'                    => extension_loaded( 'curl' ) ? 'yes' : 'no',
@@ -354,18 +352,18 @@ final class AdminPage {
 			'Unassigned plugin media' => (string) $orphans['candidates'],
 			'Potential cleanup size'  => size_format( $orphans['bytes'], 2 ),
 		);
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Diagnostics', 'vemoro-socialfeed' ) . '</h2><textarea class="large-text code" rows="14" readonly>' . esc_textarea( implode( "\n", array_map( static fn( $k, $v )=>$k . ': ' . $v, array_keys( $report ), $report ) ) ) . '</textarea><p><button id="lif-clear-cache" class="button">' . esc_html__( 'Clear cache', 'vemoro-socialfeed' ) . '</button></p></div>'; }
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Diagnostics', 'vemoro-socialfeed' ) . '</h2><textarea class="large-text code" rows="14" readonly>' . esc_textarea( implode( "\n", array_map( static fn( $k, $v )=>$k . ': ' . $v, array_keys( $report ), $report ) ) ) . '</textarea><p><button id="vemoro-clear-cache" class="button">' . esc_html__( 'Clear cache', 'vemoro-socialfeed' ) . '</button></p></div>'; }
 
 	private function logs(): void {
-		echo '<div class="lif-card"><h2>' . esc_html__( 'Recent logs', 'vemoro-socialfeed' ) . '</h2><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Time', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Level', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Message', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Details', 'vemoro-socialfeed' ) . '</th></tr></thead><tbody>';
+		echo '<div class="vemoro-card"><h2>' . esc_html__( 'Recent logs', 'vemoro-socialfeed' ) . '</h2><table class="widefat striped"><thead><tr><th>' . esc_html__( 'Time', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Level', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Message', 'vemoro-socialfeed' ) . '</th><th>' . esc_html__( 'Details', 'vemoro-socialfeed' ) . '</th></tr></thead><tbody>';
 		foreach ( $this->logs->latest( 100 ) as $row ) {
 			$context = json_decode( (string) $row->context, true );
 			$details = is_array( $context ) && $context ? (string) wp_json_encode( $context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE ) : '';
-			echo '<tr><td>' . esc_html( $row->created_at ) . '</td><td>' . esc_html( $row->level ) . '</td><td>' . esc_html( $row->message ) . '</td><td>' . ( $details ? '<details><summary>' . esc_html__( 'Show details', 'vemoro-socialfeed' ) . '</summary><pre class="lif-log-context">' . esc_html( $details ) . '</pre></details>' : '&mdash;' ) . '</td></tr>';
+			echo '<tr><td>' . esc_html( $row->created_at ) . '</td><td>' . esc_html( $row->level ) . '</td><td>' . esc_html( $row->message ) . '</td><td>' . ( $details ? '<details><summary>' . esc_html__( 'Show details', 'vemoro-socialfeed' ) . '</summary><pre class="vemoro-log-context">' . esc_html( $details ) . '</pre></details>' : '&mdash;' ) . '</td></tr>';
 		} echo '</tbody></table></div>'; }
 
 	public function connect(): void {
-		$this->guard( 'lif_connect' );
+		$this->guard( 'vemoro_connect' );
 		if ( $this->oauth->isHosted() && ! Config::termsAccepted() ) {
 			$this->redirectNotice( __( 'The Terms of Use must be accepted before starting the Vemoro Login.', 'vemoro-socialfeed' ), 'error' );
 		}
@@ -388,7 +386,7 @@ final class AdminPage {
 		}
 	}
 	public function disconnect(): void {
-		$this->guard( 'lif_disconnect' );
+		$this->guard( 'vemoro_disconnect' );
 		if ( '1' !== Request::post( 'confirm_disconnect' ) ) {
 			$this->redirectNotice( __( 'Disconnection and deletion were not confirmed.', 'vemoro-socialfeed' ), 'error' ); }
 		$lock = new SyncLock();
@@ -400,7 +398,7 @@ final class AdminPage {
 			$result = $this->posts->deleteAll();
 			$this->tokens->disconnect();
 			delete_option( Config::STATUS_OPTION );
-			delete_transient( 'lif_sync_progress' );
+			delete_transient( 'vemoro_sync_progress' );
 			FeedRenderer::clearCache();
 			$this->logs->add( 'info', 'Instagram connection and Platform Data deleted.', $result );
 			/* translators: 1: deleted posts, 2: deleted plugin-owned media, 3: retained referenced media. */
@@ -412,11 +410,11 @@ final class AdminPage {
 			$this->redirectNotice( $message, $type );
 	}
 	public function refresh(): void {
-		$this->guard( 'lif_refresh_token' );
+		$this->guard( 'vemoro_refresh_token' );
 		$ok = $this->tokens->refresh( true );
 		$this->redirectNotice( $ok ? __( 'Token refreshed.', 'vemoro-socialfeed' ) : __( 'Token refresh failed.', 'vemoro-socialfeed' ), $ok ? 'success' : 'error' ); }
 	public function check(): void {
-		$this->guard( 'lif_check_connection' );
+		$this->guard( 'vemoro_check_connection' );
 		try {
 			$profile          = $this->api->profile();
 			$meta             = (array) get_option( Config::TOKEN_OPTION, array() );
@@ -437,7 +435,7 @@ final class AdminPage {
 			$this->logs->add( 'error', 'Instagram connection check failed.', $context );
 			$this->redirectNotice( $e->getMessage(), 'error' );} }
 	public function cleanupOrphanedMedia(): void {
-		$this->guard( 'lif_cleanup_orphaned_media' );
+		$this->guard( 'vemoro_cleanup_orphaned_media' );
 		if ( '1' !== Request::post( 'confirm_cleanup' ) ) {
 			$this->redirectNotice( __( 'Cleanup was not confirmed.', 'vemoro-socialfeed' ), 'error', 'privacy' ); }
 		$lock = new SyncLock();
@@ -459,7 +457,7 @@ final class AdminPage {
 			$this->redirectNotice( $message, $type, 'privacy' );
 	}
 	public function deleteAllPosts(): void {
-		$this->guard( 'lif_delete_all_posts' );
+		$this->guard( 'vemoro_delete_all_posts' );
 		if ( '1' !== Request::post( 'confirm_delete' ) ) {
 			$this->redirectNotice( __( 'Deletion was not confirmed.', 'vemoro-socialfeed' ), 'error', 'privacy' ); }
 		$lock = new SyncLock();
@@ -470,7 +468,7 @@ final class AdminPage {
 		try {
 			$result = $this->posts->deleteAll();
 			delete_option( Config::STATUS_OPTION );
-			delete_transient( 'lif_sync_progress' );
+			delete_transient( 'vemoro_sync_progress' );
 			update_option( Config::APPLIED_REFRESH_GENERATION_OPTION, (int) get_option( Config::REFRESH_GENERATION_OPTION, 0 ), false );
 			FeedRenderer::clearCache();
 			$this->logs->add( 'info', 'All synchronized Instagram data deleted.', $result );
@@ -485,7 +483,7 @@ final class AdminPage {
 	public function callback(): void {
 		$userId            = get_current_user_id();
 		$callbackPage      = sanitize_key( Request::query( 'page' ) );
-		$explicitRoute     = 'oauth_callback' === sanitize_key( Request::query( 'lif_action' ) ) && in_array( $callbackPage, array( '', 'vemoro-socialfeed', 'local-instagram-feed' ), true );
+		$explicitRoute     = 'oauth_callback' === sanitize_key( Request::query( 'vemoro_action' ) ) && in_array( $callbackPage, array( '', 'vemoro-socialfeed' ), true );
 		$instagramFallback = isset( $GLOBALS['pagenow'] ) && 'admin.php' === $GLOBALS['pagenow'] && '' !== Request::query( 'state' ) && ( '' !== Request::query( 'code' ) || '' !== Request::query( 'error' ) ) && $userId > 0 && $this->oauth->hasPendingState( $userId );
 		if ( ! $explicitRoute && ! $instagramFallback ) {
 			return; }
@@ -514,7 +512,7 @@ final class AdminPage {
 	public function ajaxProgress(): void {
 		$this->ajaxGuard();
 		wp_send_json_success(
-			get_transient( 'lif_sync_progress' ) ?: array(
+			get_transient( 'vemoro_sync_progress' ) ?: array(
 				'phase'   => 'idle',
 				'percent' => 0,
 			)
@@ -526,42 +524,42 @@ final class AdminPage {
 	public function assets( string $hook ): void {
 		if ( false === strpos( $hook, 'vemoro-socialfeed' ) ) {
 			return;
-		} wp_enqueue_style( 'lif-admin', LIF_PLUGIN_URL . 'assets/css/admin.css', array(), LIF_VERSION );
-		wp_enqueue_script( 'lif-admin', LIF_PLUGIN_URL . 'assets/js/admin.js', array(), LIF_VERSION, true );
+		} wp_enqueue_style( 'vemoro-admin', VEMORO_PLUGIN_URL . 'assets/css/admin.css', array(), VEMORO_VERSION );
+		wp_enqueue_script( 'vemoro-admin', VEMORO_PLUGIN_URL . 'assets/js/admin.js', array(), VEMORO_VERSION, true );
 		wp_localize_script(
-			'lif-admin',
-			'lifAdmin',
+			'vemoro-admin',
+			'vemoroAdmin',
 			array(
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( 'lif_admin_ajax' ),
+				'nonce'     => wp_create_nonce( 'vemoro_admin_ajax' ),
 				'syncError' => __( 'Synchronization failed.', 'vemoro-socialfeed' ),
 			)
 		); }
 	public function notice(): void {
-		$notice = get_transient( 'lif_admin_notice_' . get_current_user_id() );
+		$notice = get_transient( 'vemoro_admin_notice_' . get_current_user_id() );
 		if ( ! is_array( $notice ) ) {
 			return;
-		}delete_transient( 'lif_admin_notice_' . get_current_user_id() );
+		}delete_transient( 'vemoro_admin_notice_' . get_current_user_id() );
 		echo '<div class="notice notice-' . esc_attr( 'error' === $notice['type'] ? 'error' : 'success' ) . ' is-dismissible"><p>' . esc_html( (string) $notice['message'] ) . '</p></div>'; }
 	private function actionButton( string $action, string $label, string $class = 'secondary' ): string {
 		$url = wp_nonce_url( admin_url( 'admin-post.php?action=' . $action ), $action );
 		return '<a class="button button-' . $class . '" href="' . esc_url( $url ) . '">' . esc_html( $label ) . '</a> '; }
 	private function hostedConnectForm( string $label ): string {
-		return '<form class="lif-hosted-connect" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
-			. '<input type="hidden" name="action" value="lif_connect">'
-			. wp_nonce_field( 'lif_connect', '_wpnonce', true, false )
+		return '<form class="vemoro-hosted-connect" method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">'
+			. '<input type="hidden" name="action" value="vemoro_connect">'
+			. wp_nonce_field( 'vemoro_connect', '_wpnonce', true, false )
 			. '<p class="submit"><button class="button button-primary" type="submit">' . esc_html( $label ) . '</button></p></form> '; }
 	private function guard( string $action ): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Insufficient permissions.', 'vemoro-socialfeed' ) );
 		}check_admin_referer( $action ); }
 	private function ajaxGuard(): void {
-		check_ajax_referer( 'lif_admin_ajax', 'nonce' );
+		check_ajax_referer( 'vemoro_admin_ajax', 'nonce' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_send_json_error( array( 'message' => __( 'Insufficient permissions.', 'vemoro-socialfeed' ) ), 403 );} }
 	private function redirectNotice( string $message, string $type = 'success', string $tab = '' ): never {
 		set_transient(
-			'lif_admin_notice_' . get_current_user_id(),
+			'vemoro_admin_notice_' . get_current_user_id(),
 			array(
 				'message' => sanitize_text_field( $message ),
 				'type'    => $type,
