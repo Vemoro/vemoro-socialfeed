@@ -1,17 +1,20 @@
-=== Vemoro SocialFeed for WP ===
-Contributors: site-owner
+=== Vemoro SocialFeed ===
+Contributors: vemoro
 Tags: instagram, privacy, local media, feed, gutenberg
 Requires at least: 6.5
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 2.0.3
+Stable tag: 2.2.4
+Donate link: https://vemoro.de/unterstuetzen/
 License: GPLv2 or later
 
 Synchronizes a professional Instagram account server-side and renders a feed using only local WordPress media.
 
 == Description ==
 
-Vemoro SocialFeed for WP uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
+Vemoro SocialFeed uses Meta's official Instagram API with Instagram Login. It stores required content in WordPress so ordinary frontend views do not need Meta scripts, embeds, API calls, or CDN media. The recommended Vemoro Login does not require a Meta App Secret in WordPress; an own Meta app remains available as expert mode.
+
+The recommended login uses the external Vemoro connection service at connect.vemoro.de. When the administrator deliberately starts a connection, WordPress transmits the WordPress callback URL, a random security state, plugin version and site URL to that service. The service communicates with Instagram, keeps an OAuth flow for at most ten minutes and an encrypted one-time grant for at most two minutes. It does not retain the permanent Instagram token. Service privacy information: https://vemoro.de/socialfeed/datenschutz/ . Terms: https://vemoro.de/nutzungsbedingungen/ . Data deletion instructions: https://vemoro.de/datenloeschung/ .
 
 Visitors do not connect to Meta on ordinary page views. Only the website operator's server communicates with the Instagram API during OAuth, synchronization, and token maintenance. Temporary API or token failures never trigger immediate deletion. A confirmed permanent disconnect removes the token and all API-derived Platform Data; plugin-owned media are deleted only when they are not referenced elsewhere in WordPress.
 
@@ -21,22 +24,117 @@ The plugin does not claim that a particular use is legally GDPR compliant. Opera
 
 See README.md for complete setup, security, WP-CLI, cron, troubleshooting, and browser acceptance instructions.
 
+== External services ==
+
+= Vemoro connection service =
+
+The recommended “Vemoro Login” relies on the connection service at https://connect.vemoro.de/ to complete Instagram OAuth without storing a Meta App Secret in WordPress. The service is provided by Vemoro and is required only when the administrator selects Vemoro Login and deliberately starts or completes a connection.
+
+When a connection starts, the plugin sends the WordPress callback URL, site URL, plugin version and a random security state to the service. When the connection completes, it sends the one-time grant code and callback URL. The service temporarily processes the OAuth state and an encrypted one-time grant as described above; the permanent Instagram access token is returned to and stored encrypted in WordPress.
+
+Vemoro service privacy information: https://vemoro.de/socialfeed/datenschutz/
+Vemoro terms of use: https://vemoro.de/nutzungsbedingungen/
+Data deletion instructions: https://vemoro.de/datenloeschung/
+
+= Instagram and Meta services =
+
+The plugin relies on Instagram’s authorization service, Instagram API and Instagram/Meta media delivery hosts to connect the selected professional Instagram account and synchronize its account-owned posts. These services are provided by Meta Platforms, Inc. A connection is made only after an administrator deliberately starts OAuth. Later server-to-server requests occur during manual or scheduled synchronization and token maintenance.
+
+Depending on the selected connection method, OAuth sends the Meta App ID, callback URL, requested permission, random security state and authorization code. Expert mode additionally sends the configured App Secret during token exchange. API and token requests send the Instagram access token and the requested profile/media fields; pagination requests also send the cursor supplied by Instagram. Media synchronization downloads the image or video URLs returned by the API from allowed Instagram/Meta CDN hosts. As with any server request, the receiving service also receives the WordPress server’s IP address and standard HTTP request metadata. The plugin does not send the WordPress site URL in Instagram API request headers.
+
+Ordinary frontend page views do not contact Instagram or Meta. If external Instagram links are enabled, a visitor contacts Instagram only after confirming the local privacy dialog and following a link.
+
+Instagram service: https://www.instagram.com/
+Instagram Terms of Use: https://help.instagram.com/581066165581870/
+Instagram Privacy Policy: https://privacycenter.instagram.com/policy/
+Meta Platform Terms: https://developers.facebook.com/terms/
+
+== Source code and development ==
+
+The complete source code is maintained publicly at https://github.com/Vemoro/vemoro-socialfeed .
+
+The JavaScript files in `assets/js/` and CSS files in `assets/css/` are the complete, human-readable source files executed by the plugin. They are maintained directly and are not generated, bundled, minified, or compiled. No npm, webpack, or other asset build step is required.
+
+Development and test instructions are documented in the repository's README.md. A distributable ZIP can be created from the repository root with `./tools/build-release.ps1 -OutputDirectory artifacts`.
+
 == Installation ==
 
 1. Activate the plugin.
 2. Keep the recommended Vemoro Login selected, or configure an own Meta app in expert mode.
-3. Connect a Business or Creator account.
-4. Run the first synchronization and add the block or shortcode.
+3. Review and accept the linked Vemoro connection service terms and acknowledge its privacy notice.
+4. Connect a Business or Creator account.
+5. Run the first synchronization and add the block or shortcode.
 
 == Voluntary support ==
 
 Vemoro SocialFeed for WP remains free of charge, without advertising or tracking. Voluntary contributions through Liberapay or GitHub Sponsors help fund maintenance, security updates, hosting and operation of the Vemoro connection service.
 
-All signed-in users see the support notice immediately in the WordPress backend. It can be postponed for 120 days or permanently hidden per user. The plugin does not load external resources for these notices; a connection to a funding service is made only after its link is clicked. Supporting is entirely voluntary and does not change the available features.
+Administrators see the optional support notice only on Vemoro SocialFeed administration screens. It can be postponed for 120 days or permanently hidden per user. The plugin does not load external resources for these notices; a connection to a funding service is made only after its link is clicked. Supporting is entirely voluntary and does not change the available features.
 
 For technical questions and problems, contact support@vemoro.de. The address is displayed in the backend notice and the plugin administration area.
 
 == Changelog ==
+
+= 2.2.4 =
+* Reuses existing local images, video posters, videos and carousel media when synchronization updates a post or performs a full refresh, preventing duplicate Media Library uploads.
+* Retries incomplete videos and carousels, restores returning or locally deleted posts, and reuses media left by interrupted runs.
+* Reports partial synchronization failures accurately and rejects malformed API media responses as deletion evidence.
+* Keeps current hidden posts out of excess-media deletion and handles confirmed empty Instagram feeds.
+* Updates automatic alt text and changed profile metadata while preserving manually edited alt text and literal backslashes in captions.
+* Prevents concurrent synchronization runs and safely handles damaged encrypted tokens.
+* Preserves shared media during uninstall and removes unreferenced owned media, including unattached and trashed-post files.
+* Tests the latest stable WordPress release in CI on PHP 8.4 and 8.5, including activation, feed rendering, REST previews and uninstall.
+
+= 2.2.3 =
+* Fixes media synchronization when WordPress file utilities have not been loaded yet.
+
+= 2.2.2 =
+* Replaces the WordPress.org banner and icon with official Vemoro brand assets.
+* Adds GitHub funding links for Liberapay and GitHub Sponsors.
+* Removes unused compatibility code and related documentation.
+* Aligns translatable metadata with the English WordPress.org source language.
+
+= 2.2.1 =
+* Publishes the complete source repository and documents that the shipped JavaScript and CSS files are directly maintained, human-readable source files without a required asset build step.
+* Renames the remaining browser-side identifiers to the unique `vemoro` prefix.
+
+= 2.2.0 =
+* Uses the unique `vemoro` prefix for declarations and stored data.
+* Documents the Vemoro and Instagram/Meta external services, data transfers, terms and privacy policies.
+* Limits the optional support notice to plugin administration screens and removes bundled translation files for WordPress.org distribution.
+
+= 2.1.6 =
+* Removes the obsolete manual translation loader and relies on WordPress.org language packs.
+* Uses fully plugin-prefixed runtime constants and uninstall variables.
+* Documents intentional uncached access to the plugin-owned media and diagnostic tables for Plugin Check.
+
+= 2.1.5 =
+* Adds safe diagnostic details for failed API operations without logging tokens or query strings.
+* Shows a persistent connection warning only after the same error occurs twice in succession.
+
+= 2.1.4 =
+* Use token-bound `/me` endpoints for Instagram profile and media requests.
+
+= 2.1.3 =
+* Keeps connection actions at the standard WordPress button height and aligns them consistently.
+
+= 2.1.2 =
+* Stores versioned acceptance of the Vemoro terms and privacy notice in the WordPress settings.
+* Moves the acceptance control next to the Vemoro Login selection.
+* Collapses expert-mode Meta App credentials until that connection method is selected.
+* Sends one-time OAuth grants as JSON and remains compatible with the broker's form-encoded transition endpoint.
+
+= 2.1.1 =
+* Repairs missing synchronization schedules automatically after WordPress or Action Scheduler initialization.
+* Detects an existing WP-Cron fallback even when Action Scheduler is installed.
+* Uses WP-Cron safely when Action Scheduler is loaded but not ready or cannot create an action.
+* Makes hosted OAuth callbacks independent of legacy WordPress admin-page slugs.
+
+= 2.1.0 =
+* Migrates the WordPress.org distribution slug, main file, text domain and language files to `vemoro-socialfeed`.
+* Adds WordPress Privacy Policy Guide content and fully discloses the hosted OAuth service, data transfer, privacy information and terms.
+* Requires explicit, server-validated acceptance of the linked terms before a hosted Vemoro Login starts.
+* Prepares the official WordPress.org contributor, donation and upgrade metadata.
 
 = 2.0.3 =
 * Adds support@vemoro.de to the backend notice, plugin administration area and documentation.

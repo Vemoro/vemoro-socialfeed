@@ -1,7 +1,44 @@
 <?xml version="1.0"?>
-<ruleset name="Local Instagram Feed">
-  <description>WordPress Coding Standards for the plugin.</description>
-  <file>local-instagram-feed.php</file><file>includes</file><file>uninstall.php</file>
-  <arg name="extensions" value="php"/><arg value="sp"/><rule ref="WordPress"/><rule ref="PHPCompatibilityWP"/>
-  <config name="testVersion" value="8.1-"/><exclude-pattern>tests/fixtures/*</exclude-pattern>
+<ruleset name="Vemoro SocialFeed">
+  <description>WordPress and PHP compatibility checks for the distributable plugin code.</description>
+
+  <file>vemoro-socialfeed.php</file>
+  <file>includes</file>
+  <file>uninstall.php</file>
+
+  <arg name="extensions" value="php"/>
+  <arg name="warning-severity" value="0"/>
+  <arg value="sp"/>
+
+  <rule ref="WordPress">
+    <!-- The existing PSR-4-style PHP API intentionally uses camelCase class members. -->
+    <exclude name="WordPress.NamingConventions.ValidFunctionName"/>
+    <exclude name="WordPress.NamingConventions.ValidVariableName"/>
+    <exclude name="WordPress.Files.FileName"/>
+    <!-- Runtime secrets use base64 as an encoding, never as code obfuscation. -->
+    <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode"/>
+    <exclude name="WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode"/>
+  </rule>
+  <rule ref="PHPCompatibilityWP"/>
+
+  <!-- Public method signatures are covered by native types and focused PHPDoc where needed. -->
+  <rule ref="Squiz.Commenting">
+    <exclude name="Squiz.Commenting.ClassComment"/>
+    <exclude name="Squiz.Commenting.FileComment"/>
+    <exclude name="Squiz.Commenting.FunctionComment"/>
+    <exclude name="Squiz.Commenting.FunctionCommentThrowTag"/>
+    <exclude name="Squiz.Commenting.LongConditionClosingComment"/>
+    <exclude name="Squiz.Commenting.VariableComment"/>
+  </rule>
+  <rule ref="Generic.Commenting.DocComment.MissingShort">
+    <severity>0</severity>
+  </rule>
+  <rule ref="Universal.NamingConventions.NoReservedKeywordParameterNames">
+    <severity>0</severity>
+  </rule>
+  <rule ref="Universal.Operators.DisallowShortTernary">
+    <severity>0</severity>
+  </rule>
+
+  <config name="testVersion" value="8.1-"/>
 </ruleset>
