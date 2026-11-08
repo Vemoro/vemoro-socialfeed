@@ -12,9 +12,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php: ['8.1', '8.2', '8.3', '8.4']
+        php: ['8.1', '8.2', '8.3', '8.4', '8.5']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -26,7 +26,7 @@ jobs:
   javascript:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -54,13 +54,15 @@ jobs:
           - { wordpress: '6.7', php: '8.2' }
           - { wordpress: '6.9', php: '8.3' }
           - { wordpress: '7.0', php: '8.4' }
+          - { wordpress: 'latest', php: '8.4' }
+          - { wordpress: 'latest', php: '8.5' }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli
-          tools: composer
+          tools: composer, wp-cli
       - run: composer install --no-interaction --prefer-dist
       - name: Install Subversion
         run: sudo apt-get update && sudo apt-get install --yes subversion
@@ -68,11 +70,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl -fsSL "https://wordpress.org/wordpress-${{ matrix.wordpress }}.tar.gz" -o /tmp/wordpress.tar.gz
+          wp_version='${{ matrix.wordpress }}'
+          if [ "$wp_version" = latest ]; then
+            wp_version=$(curl -fsSL https://api.wordpress.org/core/version-check/1.7/ | php -r '$data = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR); echo $data["offers"][0]["current"];')
+          fi
+          echo "Testing WordPress $wp_version on PHP ${{ matrix.php }}"
+          curl -fsSL "https://wordpress.org/wordpress-${wp_version}.tar.gz" -o /tmp/wordpress.tar.gz
           mkdir -p /tmp/wordpress
           tar -xzf /tmp/wordpress.tar.gz --strip-components=1 -C /tmp/wordpress
-          svn export --quiet "https://develop.svn.wordpress.org/tags/${{ matrix.wordpress }}/tests/phpunit" /tmp/wordpress-tests-lib
-          svn cat "https://develop.svn.wordpress.org/tags/${{ matrix.wordpress }}/wp-tests-config-sample.php" > /tmp/wordpress-tests-lib/wp-tests-config.php
+          svn export --quiet "https://develop.svn.wordpress.org/tags/${wp_version}/tests/phpunit" /tmp/wordpress-tests-lib
+          svn cat "https://develop.svn.wordpress.org/tags/${wp_version}/wp-tests-config-sample.php" > /tmp/wordpress-tests-lib/wp-tests-config.php
           sed -i "s/youremptytestdbnamehere/wordpress_test/" /tmp/wordpress-tests-lib/wp-tests-config.php
           sed -i "s/yourusernamehere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
           sed -i "s/yourpasswordhere/root/" /tmp/wordpress-tests-lib/wp-tests-config.php
@@ -81,11 +88,22 @@ jobs:
       - run: vendor/bin/phpunit --configuration phpunit.xml.dist
         env:
           WP_TESTS_DIR: /tmp/wordpress-tests-lib
+      - name: Test activation, rendering, REST preview and safe uninstall
+        shell: bash
+        run: |
+          set -euo pipefail
+          wp config create --path=/tmp/wordpress --dbname=wordpress_test --dbuser=root --dbpass=root --dbhost=127.0.0.1 --dbprefix=smoke_ --skip-check --skip-salts
+          wp core install --path=/tmp/wordpress --url=http://socialfeed.test --title='SocialFeed smoke test' --admin_user=testadmin --admin_password=fixture-only-password --admin_email=admin@example.test --skip-email
+          ln -s "$GITHUB_WORKSPACE" /tmp/wordpress/wp-content/plugins/vemoro-socialfeed
+          wp plugin activate vemoro-socialfeed --path=/tmp/wordpress
+          wp eval-file tests/smoke/lifecycle.php prepare --path=/tmp/wordpress
+          wp plugin uninstall vemoro-socialfeed --deactivate --skip-delete --path=/tmp/wordpress
+          wp eval-file tests/smoke/lifecycle.php verify --path=/tmp/wordpress
 
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build reproducible WordPress.org package
         shell: pwsh
         run: ./tools/build-release.ps1 -OutputDirectory artifacts
@@ -106,11 +124,10 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Scan Git history for secrets
+        run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.29.0 detect --source=/repo --redact --no-banner
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'

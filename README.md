@@ -2,9 +2,10 @@
 
 Vemoro SocialFeed for WP synchronisiert Beiträge eines eigenen professionellen Instagram-Kontos serverseitig in WordPress. Bilder, Poster, optionale Videos, Captions und Metadaten werden lokal gespeichert. Beim bloßen Anzeigen des Feeds muss der Browser des Besuchers deshalb keine Verbindung zu Instagram oder Meta aufbauen.
 
-Das Plugin ist die kompatible Weiterentwicklung von „Local Instagram Feed“. Bestehende `lif_*`-Daten, Blöcke, Shortcodes und Integrationen bleiben erhalten.
-
 > Das Plugin ist so konzipiert, dass beim bloßen Anzeigen des lokal gespeicherten Feeds keine Verbindung des Besucher-Browsers zu Instagram oder Meta erforderlich ist. Die rechtliche Zulässigkeit der veröffentlichten Inhalte, insbesondere Bildrechte und personenbezogene Daten, bleibt vom Websitebetreiber zu prüfen.
+
+[![GitHub Sponsors](https://img.shields.io/badge/GitHub%20Sponsors-Unterstützen-ea4aaa?logo=githubsponsors)](https://github.com/sponsors/vemoro)
+[![Liberapay](https://img.shields.io/badge/Liberapay-Unterstützen-f6c915?logo=liberapay&logoColor=black)](https://liberapay.com/vemoro/donate)
 
 ## Voraussetzungen
 
@@ -55,8 +56,8 @@ Die Callback-URI enthält bewusst keine Query-Parameter, da Instagram diese beim
 Die sicherste betriebliche Variante ist:
 
 ```php
-define('LIF_INSTAGRAM_APP_ID', '123456789');
-define('LIF_INSTAGRAM_APP_SECRET', 'replace-with-the-real-secret');
+define('VEMORO_INSTAGRAM_APP_ID', '123456789');
+define('VEMORO_INSTAGRAM_APP_SECRET', 'replace-with-the-real-secret');
 ```
 
 Konstanten haben Vorrang vor Datenbankwerten. Ohne Konstanten verschlüsselt das Plugin das App Secret und Token mit Sodium `secretbox`, ersatzweise AES-256-GCM. Der Schlüssel wird aus WordPress-Salts abgeleitet. Steht keine sichere Verschlüsselung bereit, verweigert das Plugin die Secret-Speicherung in der Datenbank.
@@ -64,7 +65,7 @@ Konstanten haben Vorrang vor Datenbankwerten. Ohne Konstanten verschlüsselt das
 Für einen selbst betriebenen oder lokalen Vemoro-Verbindungsdienst kann dessen Basis-URL gesetzt werden:
 
 ```php
-define('VEMORO_SOCIALFEED_CONNECT_URL', 'https://connect.example.org');
+define('VEMORO_CONNECT_URL', 'https://connect.example.org');
 ```
 
 ## API-Endpunkte und Token
@@ -88,13 +89,21 @@ Der OAuth-Code wird gegen ein Short-Lived Token getauscht, anschließend wird ei
 
 Der Standardlauf lädt die neuesten 12 Beiträge alle zwei Stunden. Unterstützt werden `IMAGE`, `VIDEO`, `CAROUSEL_ALBUM` und Reels über `media_product_type=REELS`.
 
-- WordPress-CPT: `lif_instagram_post`
-- Eindeutiger Index: `{$wpdb->prefix}lif_instagram_media`
-- Begrenztes Log: `{$wpdb->prefix}lif_logs`
-- Cron-Hook: `lif_sync_instagram_feed`
-- Lock: `lif_sync_lock`
+- WordPress-CPT: `vemoro_socialfeed`
+- Eindeutiger Index: `{$wpdb->prefix}vemoro_instagram_media`
+- Begrenztes Log: `{$wpdb->prefix}vemoro_logs`
+- Cron-Hook: `vemoro_sync_instagram_feed`
+- Lock: `vemoro_sync_lock`
+
+Der Lock liegt als nicht automatisch geladene Option mit zufälligem Token und Ablaufzeit in der WordPress-Datenbank. Ein atomarer `INSERT IGNORE` vergibt genau einen Besitzer; Verlängerung, Freigabe und Übernahme abgelaufener Locks vergleichen den vollständigen gespeicherten Wert. Ein noch aktiver Transient einer älteren Plugin-Version wird beim Update berücksichtigt.
 
 Temporäre Media-URLs allein ändern den semantischen Beitrags-Hash nicht. Vorhandene, vollständige Attachments werden wiederverwendet. Karussellkinder werden separat gespeichert; ein defektes Kind bricht den übrigen Lauf nicht ab. Manuell gepflegte WordPress-Alt-Texte werden nicht überschrieben.
+
+Die Wiederverwendung prüft den gespeicherten Attachment-Status direkt am Medienobjekt. `get_post_status()` löst `inherit` zum Status des übergeordneten Beitrags auf und eignet sich deshalb nicht für diese Prüfung. Auch bei geänderten Likes, Kommentaren oder einer Vollaktualisierung bleiben gültige lokale Bilder, Videoposter, Videos und Karussellbilder erhalten. Bereits entstandene Dubletten werden durch ein Update nicht automatisch gelöscht; die Datenschutzwerkzeuge bieten eine Vorschau zur Bereinigung unreferenzierter Plugin-Medien.
+
+Ein Beitrag wird nur übersprungen, wenn auch Videodateien und sämtliche Karussellkinder vollständig vorliegen und der lokale Beitrag aktiv ist. Fehlende Dateien und fehlerhafte Kinder werden beim nächsten Lauf erneut versucht. Nach unterbrochenen Downloads können bereits gespeicherte Plugin-Medien anhand ihrer Instagram-ID und ihres Medientyps wieder zugeordnet werden. Rückkehrende oder lokal gelöschte Beiträge werden wiederhergestellt. Profilname, Permalink und Alt-Text gehören zum semantischen Hash; automatisch gepflegte Alt-Texte werden aktualisiert, manuelle Änderungen bleiben erhalten.
+
+Nur ein vollständiger Lauf ohne Medienfehler aktualisiert den Erfolgszeitpunkt und erhöht den Erfolgszähler. Fehlerhafte API-Daten gelten nicht als autoritatives Löschsignal; ein bestätigtes leeres Konto durchläuft dagegen dieselben drei Beobachtungen wie einzelne entfernte Beiträge. Die Aufbewahrung oberhalb des Beitragslimits richtet sich nach dem Beitragsdatum, unabhängig davon, ob Reels oder Karussells aktuell ausgeblendet sind. Die optionale Datenlöschung bei Deinstallation nutzt dieselbe Referenzprüfung wie die Datenschutzwerkzeuge und berücksichtigt auch unzugeordnete Plugin-Medien und Beiträge im Papierkorb.
 
 Werden Darstellungsoptionen geändert, markiert das Plugin den nächsten Lauf als Vollaktualisierung. Dabei werden alle bereits vorhandenen Beiträge im abgerufenen Bestand erneut verarbeitet, bestehende gültige Attachments aber weiterhin wiederverwendet. Der Synchronisierungs-Tab zeigt an, ob eine Vollaktualisierung aussteht.
 
@@ -116,29 +125,29 @@ Synchronisiert wird ausschließlich der Medienbestand, den Meta für das verbund
 
 ### Gutenberg
 
-Im Blockeditor den dynamischen Block „Vemoro SocialFeed“ einfügen. Die Vorschau und das Frontend werden serverseitig aus lokalen Daten erzeugt. Der bisherige Block `local-instagram-feed/feed` bleibt für vorhandene Inhalte registriert.
+Im Blockeditor den dynamischen Block „Vemoro SocialFeed“ einfügen. Die Vorschau und das Frontend werden serverseitig aus lokalen Daten erzeugt. Der Block ist als `vemoro-socialfeed/feed` registriert.
 
 ### Shortcode
 
 ```text
-[local_instagram_feed]
-[local_instagram_feed posts="9" columns="3" columns_tablet="2" columns_mobile="1" show_caption="true"]
-[local_instagram_feed posts="6" aspect_ratio="4/5" show_date="false" order="ASC" class="startseite-feed"]
+[vemoro_socialfeed]
+[vemoro_socialfeed posts="9" columns="3" columns_tablet="2" columns_mobile="1" show_caption="true"]
+[vemoro_socialfeed posts="6" aspect_ratio="4/5" show_date="false" order="ASC" class="startseite-feed"]
 ```
 
 Unterstützt werden `posts`, `columns`, `columns_tablet`, `columns_mobile`, `show_caption`, `show_date`, `show_username`, `show_metrics`, `show_link`, `caption_length`, `aspect_ratio`, `order` und `class`.
 
-Für neue Einbindungen lautet der Shortcode `[vemoro_socialfeed]`. Der alte Shortcode bleibt als Alias erhalten.
+Der Shortcode lautet `[vemoro_socialfeed]`.
 
 ### Theme-Funktion
 
 ```php
-if (function_exists('lif_render_feed')) {
-    echo lif_render_feed(array('posts' => 9, 'columns' => 3)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+if (function_exists('vemoro_socialfeed_render')) {
+    echo vemoro_socialfeed_render(array('posts' => 9, 'columns' => 3)); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 }
 ```
 
-Neue Themes können entsprechend `vemoro_socialfeed_render()` verwenden; `lif_render_feed()` bleibt kompatibel.
+Themes können den Feed mit `vemoro_socialfeed_render()` ausgeben.
 
 Die Funktion liefert bereits kontextbezogen escaptes Plugin-Markup.
 
@@ -149,10 +158,10 @@ Sind externe Instagram-Links aktiviert, verlinkt der Benutzername auf das Instag
 WP-Cron wird normalerweise erst durch Websiteaufrufe angestoßen. Action Scheduler wird genutzt, wenn seine öffentliche API bereits geladen ist; andernfalls plant das Plugin WP-Cron.
 
 ```bash
-wp local-instagram-feed sync
-wp local-instagram-feed status
-wp local-instagram-feed refresh-token
-wp local-instagram-feed clear-cache
+wp vemoro-socialfeed sync
+wp vemoro-socialfeed status
+wp vemoro-socialfeed refresh-token
+wp vemoro-socialfeed clear-cache
 ```
 
 Dieselben Unterbefehle stehen zusätzlich unter `wp vemoro-socialfeed …` bereit.
@@ -160,7 +169,7 @@ Dieselben Unterbefehle stehen zusätzlich unter `wp vemoro-socialfeed …` berei
 Beispiel für einen echten Server-Cron:
 
 ```cron
-*/30 * * * * cd /pfad/zu/wordpress && wp local-instagram-feed sync --quiet
+*/30 * * * * cd /pfad/zu/wordpress && wp vemoro-socialfeed sync --quiet
 ```
 
 ## Datenschutz- und Sicherheitskonzept
@@ -195,6 +204,8 @@ Nach einer erfolgreichen Synchronisierung:
 
 ## Tests und Entwicklung
 
+Der vollständige Quellcode wird öffentlich unter [github.com/Vemoro/vemoro-socialfeed](https://github.com/Vemoro/vemoro-socialfeed) gepflegt. Die JavaScript-Dateien in `assets/js/` und die CSS-Dateien in `assets/css/` sind die vollständigen, menschenlesbaren Quelldateien, die das Plugin ausführt. Sie werden direkt gepflegt und weder generiert noch gebündelt, minifiziert oder kompiliert. Ein npm-, webpack- oder sonstiger Asset-Build ist daher nicht erforderlich.
+
 ```bash
 composer install
 composer test
@@ -213,10 +224,10 @@ node tests/js/frontend-reveal.test.js
 node tests/js/frontend-row-height.test.js
 ```
 
-Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus einem markierten Commit erstellen:
+Eine veröffentlichungsfertige ZIP-Datei ohne Tests und Entwicklungswerkzeuge lässt sich aus dem Repository-Stamm erstellen:
 
-```bash
-git archive --format=zip --prefix=vemoro-socialfeed/ -o vemoro-socialfeed-2.1.0.zip HEAD
+```powershell
+./tools/build-release.ps1 -OutputDirectory artifacts
 ```
 
 ## Fehlerbehebung
@@ -237,20 +248,6 @@ Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen de
 
 Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt ausschließlich plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
 
-## Upgrade von 2.0.3
-
-Die WordPress.org-Ausgabe verwendet ab 2.1.0 den Ordner und die Hauptdatei `vemoro-socialfeed`. Alle Optionen, Tabellen, CPTs, Metadaten und Attachments behalten absichtlich ihre `lif_*`-Kennungen. Ebenso bleiben `local-instagram-feed/feed`, `[local_instagram_feed]`, `lif_render_feed()` und `wp local-instagram-feed` als kompatible Aliase erhalten.
-
-Bei einer bisher manuell installierten Version:
-
-1. Sicherung der Datenbank und Uploads erstellen.
-2. Das alte Plugin nur deaktivieren, nicht deinstallieren.
-3. Sicherstellen, dass „Alle Plugin-Daten bei Deinstallation löschen“ deaktiviert ist.
-4. Den alten Pluginordner entfernen und den neuen Ordner `vemoro-socialfeed` installieren.
-5. Vemoro SocialFeed aktivieren und Verbindung, Datensatzanzahl sowie einen vorhandenen Feed prüfen.
-
-Die Daten werden dabei nicht umbenannt oder neu importiert. Ein paralleles Aktivieren beider Ordner ist nicht zulässig, da beide dieselben Klassen und Daten verwenden.
-
 ## Grenzen
 
 - Genau ein professionelles Instagram-Konto pro WordPress-Installation
@@ -263,11 +260,39 @@ Die Daten werden dabei nicht umbenannt oder neu importiert. Ein paralleles Aktiv
 
 Vemoro SocialFeed for WP bleibt kostenlos, werbefrei und ohne Tracking. Freiwillige Beiträge über [Liberapay](https://liberapay.com/vemoro/donate) oder [GitHub Sponsors](https://github.com/sponsors/vemoro) helfen bei Wartung, Sicherheitsupdates, Hosting und Betrieb des Vemoro-Verbindungsdienstes.
 
-Alle angemeldeten Benutzer sehen den entsprechenden Hinweis unmittelbar im WordPress-Backend. Er lässt sich für 120 Tage zurückstellen oder pro Benutzer dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
+Administratoren sehen den optionalen Hinweis ausschließlich auf den Verwaltungsseiten von Vemoro SocialFeed. Er lässt sich für 120 Tage zurückstellen oder pro Benutzer dauerhaft ausblenden. Zusätzlich enthält die Plugin-Verwaltung einen unaufdringlichen Unterstützungsbereich. Beim Anzeigen der Hinweise werden keine externen Ressourcen geladen; eine Verbindung zu Liberapay oder GitHub entsteht erst nach dem bewussten Anklicken des jeweiligen Links. Eine Unterstützung ist vollständig freiwillig und verändert den Funktionsumfang nicht.
 
 Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vemoro.de) gesendet werden. Die Adresse wird sowohl im Backend-Hinweis als auch in der Plugin-Verwaltung angezeigt.
 
 ## Changelog
+
+### 2.2.3
+
+- Behebt die Mediensynchronisierung, wenn die WordPress-Dateifunktionen noch nicht geladen wurden.
+
+### 2.2.2
+
+- Offizielle Vemoro-Markenassets für Banner und Plugin-Icon auf WordPress.org ergänzt.
+- GitHub-Finanzierungslinks für Liberapay und GitHub Sponsors eingerichtet.
+- Ungenutzten Altcode und zugehörige Dokumentation entfernt.
+- Übersetzbare Metadaten auf die englische WordPress.org-Quellsprache vereinheitlicht.
+
+### 2.2.1
+
+- Vollständiges öffentliches Quell-Repository verlinkt und dokumentiert, dass die ausgelieferten JavaScript- und CSS-Dateien direkt gepflegte, menschenlesbare Quelldateien ohne erforderlichen Asset-Build sind.
+- Verbliebene Browser-Bezeichner auf den eindeutigen Präfix `vemoro` umgestellt.
+
+### 2.2.0
+
+- Sämtliche Deklarationen und gespeicherten Daten verwenden den eindeutigen Präfix `vemoro`.
+- Vemoro Connect und Instagram/Meta einschließlich Datenübertragung, Nutzungsbedingungen und Datenschutzrichtlinien vollständig in `readme.txt` offengelegt.
+- Adminhinweis auf Pluginseiten begrenzt und mitgelieferte Übersetzungsdateien für die WordPress.org-Ausgabe entfernt.
+
+### 2.1.6
+
+- Veralteten manuellen Übersetzungsloader entfernt; Übersetzungen werden über die WordPress-Sprachpakete geladen.
+- Laufzeitkonstanten und Variablen der Deinstallationsroutine vollständig mit dem Plugin-Präfix versehen.
+- Absichtliche, nicht zwischengespeicherte Zugriffe auf die plugin-eigenen Medien- und Diagnosetabellen für Plugin Check dokumentiert.
 
 ### 2.1.5
 
@@ -299,7 +324,6 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 ### 2.1.0
 
 - WordPress.org-Slug, Pluginordner, Hauptdatei, Textdomain und Sprachdateien auf `vemoro-socialfeed` migriert.
-- Bestehende `lif_*`-Daten und alte Block-, Shortcode-, Theme- sowie WP-CLI-Schnittstellen bleiben kompatibel.
 - Vorschlag für die WordPress-Datenschutzerklärung über `wp_add_privacy_policy_content()` ergänzt.
 - Externen Vemoro-OAuth-Dienst, übertragene Daten, Laufzeiten, Datenschutzseite und Nutzungsbedingungen vollständig dokumentiert.
 - Vor jedem Vemoro Login eine serverseitig geprüfte Zustimmung zu den verlinkten Nutzungsbedingungen ergänzt.
@@ -327,7 +351,6 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 - Vemoro Login als Standard hinzugefügt; WordPress benötigt dabei kein Meta-App-Secret.
 - Eigene Meta-App bleibt als Expertenmodus verfügbar und bestehende Konfigurationen werden automatisch beibehalten.
 - Neuer Block `vemoro-socialfeed/feed`, Shortcode `[vemoro_socialfeed]`, Theme-Funktion `vemoro_socialfeed_render()` und CLI-Befehl `wp vemoro-socialfeed` ergänzt.
-- Alle bisherigen `lif_*`-Schnittstellen und gespeicherten Daten bleiben kompatibel.
 
 ### 1.0.30
 

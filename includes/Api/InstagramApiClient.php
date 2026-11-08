@@ -1,10 +1,10 @@
 <?php
-namespace LocalInstagramFeed\Api;
+namespace Vemoro\SocialFeed\Api;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Domain\Media;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Domain\Media;
 
 final class InstagramApiClient {
 	private const GRAPH_HOST = 'https://graph.instagram.com';
@@ -33,8 +33,12 @@ final class InstagramApiClient {
 			}
 			++$pages;
 			$body = $this->request( $url, 'media_list' );
-			foreach ( (array) ( $body['data'] ?? array() ) as $row ) {
+			if ( ! isset( $body['data'] ) || ! is_array( $body['data'] ) ) {
+				throw new ApiException( __( 'Instagram returned invalid media data.', 'vemoro-socialfeed' ), 200, 0, true, 'media_list' );
+			}
+			foreach ( $body['data'] as $row ) {
 				if ( ! is_array( $row ) ) {
+					$validResponse = false;
 					continue; }
 				try {
 					$items[] = Media::fromArray( $row );
@@ -88,7 +92,7 @@ final class InstagramApiClient {
 					'Authorization' => 'Bearer ' . $this->tokens->accessToken(),
 					'Accept'        => 'application/json',
 				),
-				'user-agent'  => 'LocalInstagramFeed/' . LIF_VERSION . '; ' . home_url( '/' ),
+				'user-agent'  => 'Vemoro\SocialFeed/' . VEMORO_VERSION,
 			)
 		);
 		if ( is_wp_error( $response ) ) {

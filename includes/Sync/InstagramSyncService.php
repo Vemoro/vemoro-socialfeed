@@ -1,18 +1,18 @@
 <?php
-namespace LocalInstagramFeed\Sync;
+namespace Vemoro\SocialFeed\Sync;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Api\InstagramApiClient;
-use LocalInstagramFeed\Api\ApiException;
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Diagnostics\FailureTracker;
-use LocalInstagramFeed\Domain\Media;
-use LocalInstagramFeed\Domain\SyncResult;
-use LocalInstagramFeed\Frontend\FeedRenderer;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Repository\PostRepository;
+use Vemoro\SocialFeed\Api\InstagramApiClient;
+use Vemoro\SocialFeed\Api\ApiException;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Diagnostics\FailureTracker;
+use Vemoro\SocialFeed\Domain\Media;
+use Vemoro\SocialFeed\Domain\SyncResult;
+use Vemoro\SocialFeed\Frontend\FeedRenderer;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Repository\PostRepository;
 
 final class InstagramSyncService {
 	public function __construct( private readonly InstagramApiClient $api, private readonly TokenService $tokens, private readonly PostRepository $posts, private readonly MediaDownloadService $downloads, private readonly SyncLock $lock, private readonly LogRepository $logs ) {}
@@ -25,9 +25,9 @@ final class InstagramSyncService {
 			return $result; }
 		$started = microtime( true );
 		$phase   = 'starting';
-		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => LIF_VERSION ) );
+		$this->logs->add( 'info', 'Instagram synchronization started.', array( 'plugin_version' => VEMORO_VERSION ) );
 		set_transient(
-			'lif_sync_progress',
+			'vemoro_sync_progress',
 			array(
 				'phase'   => 'starting',
 				'current' => 0,
@@ -62,7 +62,7 @@ final class InstagramSyncService {
 			$seen            = array();
 			$current         = 0;
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
 					'phase'   => 'media',
 					'current' => 0,
@@ -94,7 +94,7 @@ final class InstagramSyncService {
 						)
 					); }
 				set_transient(
-					'lif_sync_progress',
+					'vemoro_sync_progress',
 					array(
 						'phase'   => 'media',
 						'current' => $current,
@@ -105,6 +105,10 @@ final class InstagramSyncService {
 				);
 			}
 			$result->complete = (bool) $batch['complete'];
+			if ( ! $result->complete ) {
+				++$result->failed;
+				$result->errors[] = __( 'Instagram synchronization did not retrieve a complete media window.', 'vemoro-socialfeed' );
+			}
 			if ( $result->complete ) {
 				$result->deleted = $this->posts->markMissing( $seen, (string) $batch['oldest'], (string) $settings['deleted_behavior'], (int) $settings['missing_grace_hours'] ); }
 			if ( $result->complete && 0 === $result->failed ) {
@@ -116,18 +120,24 @@ final class InstagramSyncService {
 			if ( $forceRefresh && $result->complete && 0 === $result->failed ) {
 				update_option( Config::APPLIED_REFRESH_GENERATION_OPTION, $refreshGeneration, false ); }
 			FeedRenderer::clearCache();
-			$status                     = FailureTracker::clear( (array) get_option( Config::STATUS_OPTION, array() ) );
+			$status                     = (array) get_option( Config::STATUS_OPTION, array() );
+			$successful                 = $result->complete && 0 === $result->failed;
+			if ( $successful ) {
+				$status = FailureTracker::clear( $status );
+				$status['last_success'] = time();
+				$status['successful_syncs'] = (int) ( $status['successful_syncs'] ?? 0 ) + 1;
+			} else {
+				$status = FailureTracker::record( $status, implode( '; ', $result->errors ) );
+			}
 			$status['last_run']         = time();
-			$status['last_success']     = time();
 			$status['result']           = $result->toArray();
 			$status['duration']         = round( microtime( true ) - $started, 3 );
-			$status['successful_syncs'] = (int) ( $status['successful_syncs'] ?? 0 ) + 1;
 			update_option( Config::STATUS_OPTION, $status, false );
-			$this->logs->add( 'info', 'Instagram synchronization completed.', $result->toArray() );
+			$this->logs->add( $successful ? 'info' : 'error', $successful ? 'Instagram synchronization completed.' : 'Instagram synchronization completed with errors.', $result->toArray() );
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
-					'phase'   => 'complete',
+					'phase'   => $successful ? 'complete' : 'failed',
 					'current' => $result->fetched,
 					'total'   => $result->fetched,
 					'percent' => 100,
@@ -148,7 +158,7 @@ final class InstagramSyncService {
 			$context['consecutive_failures'] = (int) $status['consecutive_failures'];
 			$this->logs->add( 'error', 'Instagram synchronization aborted.', $context );
 			set_transient(
-				'lif_sync_progress',
+				'vemoro_sync_progress',
 				array(
 					'phase'   => 'failed',
 					'current' => 0,
@@ -167,7 +177,7 @@ final class InstagramSyncService {
 	private function syncMedia( Media $media, SyncResult $result, array $settings, bool $forceRefresh = false ): void {
 		$index  = $this->posts->index( $media->id );
 		$postId = $index ? (int) $index['post_id'] : 0;
-		if ( ! $forceRefresh && $index && hash_equals( (string) $index['data_hash'], $media->semanticHash() ) && (int) $index['attachment_id'] > 0 && file_exists( (string) get_attached_file( (int) $index['attachment_id'] ) ) ) {
+		if ( ! $forceRefresh && $index && hash_equals( (string) $index['data_hash'], $media->semanticHash() ) && $this->isComplete( $media, $index, $settings ) ) {
 			$this->posts->touch( $postId );
 			++$result->skipped;
 			return; }
@@ -203,5 +213,23 @@ final class InstagramSyncService {
 				++$result->created;
 			} else {
 				++$result->updated; }
+	}
+
+	/** @param array<string,mixed> $index @param array<string,mixed> $settings */
+	private function isComplete( Media $media, array $index, array $settings ): bool {
+		$postId = (int) $index['post_id'];
+		if ( Config::POST_TYPE !== get_post_type( $postId ) || 'publish' !== get_post_status( $postId ) || 'active' !== get_post_meta( $postId, '_vemoro_status', true ) || ! $this->downloads->isAvailable( (int) $index['attachment_id'] ) ) {
+			return false;
+		}
+		if ( 'VIDEO' === $media->mediaType && ! empty( $settings['mirror_videos'] ) && $media->mediaUrl && ! $this->downloads->isAvailable( (int) $index['video_attachment_id'], true ) ) {
+			return false;
+		}
+		foreach ( $media->children as $child ) {
+			$row = $this->posts->index( $child->id );
+			if ( ! $row || $media->id !== $row['parent_media_id'] || 'ok' !== $row['file_status'] || ! $this->downloads->isAvailable( (int) $row['attachment_id'] ) ) {
+				return false;
+			}
+		}
+		return true;
 	}
 }
