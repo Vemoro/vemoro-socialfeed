@@ -39,6 +39,10 @@ jobs:
       - name: Test JavaScript
         run: |
           for test_file in tests/js/*.test.js; do node "$test_file"; done
+      - name: Install Subversion
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes subversion
       - name: Build SVN working copy
         env:
           WPORG_USERNAME: ${{ secrets.WPORG_USERNAME }}
@@ -51,7 +55,7 @@ jobs:
           svn checkout --depth=immediates \
             --username "$WPORG_USERNAME" --password "$WPORG_PASSWORD" --non-interactive \
             https://plugins.svn.wordpress.org/vemoro-socialfeed "$RUNNER_TEMP/wporg"
-          svn update "$RUNNER_TEMP/wporg/trunk" "$RUNNER_TEMP/wporg/assets"
+          svn update --set-depth=infinity "$RUNNER_TEMP/wporg/trunk" "$RUNNER_TEMP/wporg/assets"
           mkdir -p "$RUNNER_TEMP/package"
           rsync -a --delete --exclude-from=.distignore ./ "$RUNNER_TEMP/package/"
           rsync -a --delete "$RUNNER_TEMP/package/" "$RUNNER_TEMP/wporg/trunk/"

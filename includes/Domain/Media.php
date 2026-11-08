@@ -56,6 +56,6 @@ final class Media {
 
 	public function semanticHash(): string {
 		$children = array_map( static fn( self $child ): string => $child->semanticHash(), $this->children );
-		return hash( 'sha256', (string) wp_json_encode( array( $this->id, $this->caption, $this->mediaType, $this->productType, $this->timestamp, $children, $this->likeCount, $this->commentsCount ) ) );
+		return hash( 'sha256', (string) wp_json_encode( array( $this->id, $this->caption, $this->mediaType, $this->productType, $this->timestamp, $this->username, $this->permalink, $this->altText, $children, $this->likeCount, $this->commentsCount ) ) );
 	}
 }
