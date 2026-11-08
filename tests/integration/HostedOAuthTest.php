@@ -1,6 +1,6 @@
 <?php
-use LocalInstagramFeed\Api\OAuthService;
-use LocalInstagramFeed\Config;
+use Vemoro\SocialFeed\Api\OAuthService;
+use Vemoro\SocialFeed\Config;
 
 final class HostedOAuthTest extends WP_UnitTestCase {
 	protected function tearDown(): void {

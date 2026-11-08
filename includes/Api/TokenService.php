@@ -1,11 +1,11 @@
 <?php
-namespace LocalInstagramFeed\Api;
+namespace Vemoro\SocialFeed\Api;
 
 // phpcs:disable WordPress.Security.EscapeOutput.ExceptionNotEscaped -- Exception messages are never rendered directly and are escaped by their presentation boundary.
 
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Security\SecretStoreInterface;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Security\SecretStoreInterface;
 
 final class TokenService {
 	public function __construct( private readonly SecretStoreInterface $secrets, private readonly LogRepository $logs ) {}
@@ -136,7 +136,7 @@ final class TokenService {
 
 	private function scheduleRetry( int $failures ): void {
 		$delay = array( 900, 3600, 21600, 86400 )[ min( 3, max( 0, $failures - 1 ) ) ];
-		if ( ! wp_next_scheduled( 'lif_refresh_token_retry' ) ) {
-			wp_schedule_single_event( time() + $delay, 'lif_refresh_token_retry' ); }
+		if ( ! wp_next_scheduled( 'vemoro_refresh_token_retry' ) ) {
+			wp_schedule_single_event( time() + $delay, 'vemoro_refresh_token_retry' ); }
 	}
 }

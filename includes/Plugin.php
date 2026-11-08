@@ -1,20 +1,20 @@
 <?php
-namespace LocalInstagramFeed;
+namespace Vemoro\SocialFeed;
 
-use LocalInstagramFeed\Admin\AdminPage;
-use LocalInstagramFeed\Admin\SupportNotice;
-use LocalInstagramFeed\Api\InstagramApiClient;
-use LocalInstagramFeed\Api\OAuthService;
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Cli\Commands;
-use LocalInstagramFeed\Frontend\FeedRenderer;
-use LocalInstagramFeed\Frontend\Integrations;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Repository\PostRepository;
-use LocalInstagramFeed\Security\SecretStore;
-use LocalInstagramFeed\Sync\InstagramSyncService;
-use LocalInstagramFeed\Sync\MediaDownloadService;
-use LocalInstagramFeed\Sync\SyncLock;
+use Vemoro\SocialFeed\Admin\AdminPage;
+use Vemoro\SocialFeed\Admin\SupportNotice;
+use Vemoro\SocialFeed\Api\InstagramApiClient;
+use Vemoro\SocialFeed\Api\OAuthService;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Cli\Commands;
+use Vemoro\SocialFeed\Frontend\FeedRenderer;
+use Vemoro\SocialFeed\Frontend\Integrations;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Repository\PostRepository;
+use Vemoro\SocialFeed\Security\SecretStore;
+use Vemoro\SocialFeed\Sync\InstagramSyncService;
+use Vemoro\SocialFeed\Sync\MediaDownloadService;
+use Vemoro\SocialFeed\Sync\SyncLock;
 
 final class Plugin {
 	private static ?self $instance      = null;
@@ -28,7 +28,6 @@ final class Plugin {
 	public function boot(): void {
 		if ( Config::DB_VERSION !== (string) get_option( Config::DB_VERSION_OPTION, '' ) ) {
 			Activation::upgrade(); }
-		load_plugin_textdomain( 'vemoro-socialfeed', false, dirname( plugin_basename( LIF_PLUGIN_FILE ) ) . '/languages' );
 		add_action( 'admin_init', array( self::class, 'addPrivacyPolicyContent' ) );
 		add_action(
 			'init',
@@ -40,7 +39,7 @@ final class Plugin {
 		add_action(
 			'after_setup_theme',
 			static function (): void {
-				add_image_size( 'lif-feed', 1080, 1080, false );
+				add_image_size( 'vemoro-feed', 1080, 1080, false );
 			}
 		);
 		CronManager::register();
@@ -50,7 +49,7 @@ final class Plugin {
 			( new AdminPage( new OAuthService(), $services['tokens'], $services['api'], $services['sync'], $services['posts'], $services['logs'], $services['secrets'] ) )->register();
 			( new SupportNotice() )->register();
 		}
-		add_action( 'lif_refresh_token_retry', fn(): bool => $services['tokens']->refresh( true ) );
+		add_action( 'vemoro_refresh_token_retry', fn(): bool => $services['tokens']->refresh( true ) );
 		add_action( 'updated_post_meta', array( $this, 'attachmentMetaChanged' ), 10, 4 );
 		add_action( 'added_post_meta', array( $this, 'attachmentMetaChanged' ), 10, 4 );
 		add_action(
@@ -62,7 +61,6 @@ final class Plugin {
 		if ( defined( 'WP_CLI' ) && WP_CLI ) {
 			$commands = new Commands( $services['sync'], $services['tokens'] );
 			\WP_CLI::add_command( 'vemoro-socialfeed', $commands );
-			\WP_CLI::add_command( 'local-instagram-feed', $commands );
 		}
 	}
 
@@ -100,7 +98,7 @@ final class Plugin {
 	public function runCron(): void {
 		$this->sync()->sync(); }
 	public function attachmentMetaChanged( int $metaId, int $objectId, string $metaKey, mixed $value ): void {
-		if ( '_wp_attachment_image_alt' === $metaKey && '1' === get_post_meta( $objectId, '_lif_owned', true ) ) {
+		if ( '_wp_attachment_image_alt' === $metaKey && '1' === get_post_meta( $objectId, '_vemoro_owned', true ) ) {
 			FeedRenderer::clearCache();} }
 	private function sync(): InstagramSyncService {
 		if ( ! $this->sync ) {

@@ -1,19 +1,19 @@
 <?php
-namespace LocalInstagramFeed;
+namespace Vemoro\SocialFeed;
 
 final class Config {
-	public const OPTION                            = 'lif_settings';
-	public const STATUS_OPTION                     = 'lif_status';
-	public const TOKEN_OPTION                      = 'lif_token';
-	public const DB_VERSION_OPTION                 = 'lif_db_version';
-	public const DB_VERSION                        = '1.1.0';
+	public const OPTION                            = 'vemoro_settings';
+	public const STATUS_OPTION                     = 'vemoro_status';
+	public const TOKEN_OPTION                      = 'vemoro_token';
+	public const DB_VERSION_OPTION                 = 'vemoro_db_version';
+	public const DB_VERSION                        = '1.2.0';
 	public const DEFAULT_API_VERSION               = 'v25.0';
 	public const DEFAULT_CONNECT_URL               = 'https://connect.vemoro.de';
-	public const POST_TYPE                         = 'lif_instagram_post';
-	public const CRON_HOOK                         = 'lif_sync_instagram_feed';
-	public const LOCK_KEY                          = 'lif_sync_lock';
-	public const REFRESH_GENERATION_OPTION         = 'lif_refresh_generation';
-	public const APPLIED_REFRESH_GENERATION_OPTION = 'lif_applied_refresh_generation';
+	public const POST_TYPE                         = 'vemoro_socialfeed';
+	public const CRON_HOOK                         = 'vemoro_sync_instagram_feed';
+	public const LOCK_KEY                          = 'vemoro_sync_lock';
+	public const REFRESH_GENERATION_OPTION         = 'vemoro_refresh_generation';
+	public const APPLIED_REFRESH_GENERATION_OPTION = 'vemoro_applied_refresh_generation';
 	public const LIBERAPAY_URL                     = 'https://liberapay.com/vemoro/donate';
 	public const GITHUB_SPONSORS_URL               = 'https://github.com/sponsors/vemoro';
 	public const SUPPORT_EMAIL                     = 'support@vemoro.de';
@@ -33,7 +33,7 @@ final class Config {
 			'terms_accepted_by'     => 0,
 			'terms_version'         => '',
 			'post_limit'            => 12,
-			'sync_interval'         => 'lif_two_hours',
+			'sync_interval'         => 'vemoro_two_hours',
 			'caption_length'        => 300,
 			'excess_retention_days' => 30,
 			'deleted_behavior'      => 'inactive',
@@ -68,7 +68,7 @@ final class Config {
 		$value = get_option( self::OPTION, array() );
 		$value = is_array( $value ) ? $value : array();
 		// Preserve working pre-2.0 installations as expert-mode connections.
-		if ( ! isset( $value['oauth_provider'] ) && ( ! empty( $value['app_id'] ) || defined( 'LIF_INSTAGRAM_APP_ID' ) ) ) {
+		if ( ! isset( $value['oauth_provider'] ) && ( ! empty( $value['app_id'] ) || defined( 'VEMORO_INSTAGRAM_APP_ID' ) ) ) {
 			$value['oauth_provider'] = 'custom';
 		}
 		return wp_parse_args( $value, self::defaults() );
@@ -84,21 +84,21 @@ final class Config {
 	}
 
 	public static function connectUrl(): string {
-		if ( defined( 'VEMORO_SOCIALFEED_CONNECT_URL' ) ) {
-			return untrailingslashit( (string) VEMORO_SOCIALFEED_CONNECT_URL );
+		if ( defined( 'VEMORO_CONNECT_URL' ) ) {
+			return untrailingslashit( (string) VEMORO_CONNECT_URL );
 		}
 		$url = (string) self::settings()['connect_url'];
 		return untrailingslashit( $url ?: self::DEFAULT_CONNECT_URL );
 	}
 
 	public static function appId(): string {
-		return defined( 'LIF_INSTAGRAM_APP_ID' ) ? (string) LIF_INSTAGRAM_APP_ID : (string) self::settings()['app_id'];
+		return defined( 'VEMORO_INSTAGRAM_APP_ID' ) ? (string) VEMORO_INSTAGRAM_APP_ID : (string) self::settings()['app_id'];
 	}
 
 	public static function appSecret(): string {
-		if ( defined( 'LIF_INSTAGRAM_APP_SECRET' ) ) {
-			return (string) LIF_INSTAGRAM_APP_SECRET; }
-		return (string) ( new \LocalInstagramFeed\Security\SecretStore() )->get( 'app_secret' );
+		if ( defined( 'VEMORO_INSTAGRAM_APP_SECRET' ) ) {
+			return (string) VEMORO_INSTAGRAM_APP_SECRET; }
+		return (string) ( new \Vemoro\SocialFeed\Security\SecretStore() )->get( 'app_secret' );
 	}
 
 	public static function redirectUri(): string {

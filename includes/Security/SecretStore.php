@@ -1,8 +1,8 @@
 <?php
-namespace LocalInstagramFeed\Security;
+namespace Vemoro\SocialFeed\Security;
 
 final class SecretStore implements SecretStoreInterface {
-	private const PREFIX = 'lif_secret_';
+	private const PREFIX = 'vemoro_secret_';
 
 	public function store( string $key, string $value ): bool {
 		$encrypted = $this->encrypt( $value );
@@ -53,11 +53,17 @@ final class SecretStore implements SecretStoreInterface {
 		if ( false === $raw ) {
 			return null; }
 		if ( 'sodium' === $method && function_exists( 'sodium_crypto_secretbox_open' ) ) {
+			if ( strlen( $raw ) < SODIUM_CRYPTO_SECRETBOX_NONCEBYTES + SODIUM_CRYPTO_SECRETBOX_MACBYTES ) {
+				return null;
+			}
 			$nonce = substr( $raw, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES );
 			$value = sodium_crypto_secretbox_open( substr( $raw, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES ), $nonce, $this->key() );
 			return false === $value ? null : $value;
 		}
 		if ( 'openssl' === $method && function_exists( 'openssl_decrypt' ) ) {
+			if ( strlen( $raw ) < 28 ) {
+				return null;
+			}
 			$value = openssl_decrypt( substr( $raw, 28 ), 'aes-256-gcm', $this->key(), OPENSSL_RAW_DATA, substr( $raw, 0, 12 ), substr( $raw, 12, 16 ) );
 			return false === $value ? null : $value;
 		}

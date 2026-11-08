@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Domain;
+namespace Vemoro\SocialFeed\Domain;
 
 final class SyncResult {
 	public int $created = 0;

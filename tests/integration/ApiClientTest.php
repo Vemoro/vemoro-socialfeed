@@ -1,9 +1,9 @@
 <?php
-use LocalInstagramFeed\Api\InstagramApiClient;
-use LocalInstagramFeed\Api\TokenService;
-use LocalInstagramFeed\Config;
-use LocalInstagramFeed\Repository\LogRepository;
-use LocalInstagramFeed\Security\SecretStore;
+use Vemoro\SocialFeed\Api\InstagramApiClient;
+use Vemoro\SocialFeed\Api\TokenService;
+use Vemoro\SocialFeed\Config;
+use Vemoro\SocialFeed\Repository\LogRepository;
+use Vemoro\SocialFeed\Security\SecretStore;
 
 final class ApiClientTest extends WP_UnitTestCase {
 	protected function tearDown(): void {
@@ -78,7 +78,7 @@ final class ApiClientTest extends WP_UnitTestCase {
 		$this->assertSame( 'example', $profile['username'] );
 	}
 	public function test_normalizes_api_error(): void {
-		$this->expectException( LocalInstagramFeed\Api\ApiException::class );
+		$this->expectException( Vemoro\SocialFeed\Api\ApiException::class );
 		$store = new SecretStore();
 		$store->store( 'access_token', 'test-token' );
 		update_option(

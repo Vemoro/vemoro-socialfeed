@@ -1,42 +1,42 @@
 <?php
-namespace LocalInstagramFeed\Admin;
+namespace Vemoro\SocialFeed\Admin;
 
-use LocalInstagramFeed\Config;
+use Vemoro\SocialFeed\Config;
 
 final class SupportNotice {
-	private const DISMISSED_META = 'lif_support_notice_dismissed';
-	private const REMIND_AT_META = 'lif_support_notice_remind_at';
+	private const DISMISSED_META = 'vemoro_support_notice_dismissed';
+	private const REMIND_AT_META = 'vemoro_support_notice_remind_at';
 	private const REMINDER_DELAY = 120 * DAY_IN_SECONDS;
 
 	public function register(): void {
 		add_action( 'admin_notices', array( $this, 'render' ) );
-		add_action( 'admin_post_lif_support_remind_later', array( $this, 'remindLater' ) );
-		add_action( 'admin_post_lif_support_dismiss', array( $this, 'dismiss' ) );
+		add_action( 'admin_post_vemoro_support_remind_later', array( $this, 'remindLater' ) );
+		add_action( 'admin_post_vemoro_support_dismiss', array( $this, 'dismiss' ) );
 	}
 
 	public function render(): void {
 		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
-		if ( ( $screen && str_contains( (string) $screen->id, 'vemoro-socialfeed' ) ) || ! current_user_can( 'read' ) || ! $this->isDue( get_current_user_id() ) ) {
+		if ( ! $screen || ! str_contains( (string) $screen->id, 'vemoro-socialfeed' ) || ! current_user_can( 'manage_options' ) || ! $this->isDue( get_current_user_id() ) ) {
 			return;
 		}
 
-		echo '<div class="notice notice-info lif-support-notice">';
+		echo '<div class="notice notice-info vemoro-support-notice">';
 		echo '<p><strong>' . esc_html__( 'Help keep Vemoro SocialFeed available', 'vemoro-socialfeed' ) . '</strong></p>';
 		echo '<p>' . esc_html__( 'Vemoro SocialFeed is provided free of charge and without advertising or tracking. If the plugin saves you time, you can voluntarily help cover maintenance, hosting and Meta API operating costs.', 'vemoro-socialfeed' ) . '</p>';
 		echo '<p>';
 		self::renderExternalLink( Config::LIBERAPAY_URL, __( 'Support via Liberapay', 'vemoro-socialfeed' ), 'button button-primary' );
 		echo ' ';
 		self::renderExternalLink( Config::GITHUB_SPONSORS_URL, __( 'Support via GitHub Sponsors', 'vemoro-socialfeed' ), 'button' );
-		echo '</p><div class="lif-support-notice__actions">';
-		$this->renderActionForm( 'lif_support_remind_later', __( 'Remind me later', 'vemoro-socialfeed' ) );
-		$this->renderActionForm( 'lif_support_dismiss', __( 'Do not show again', 'vemoro-socialfeed' ) );
+		echo '</p><div class="vemoro-support-notice__actions">';
+		$this->renderActionForm( 'vemoro_support_remind_later', __( 'Remind me later', 'vemoro-socialfeed' ) );
+		$this->renderActionForm( 'vemoro_support_dismiss', __( 'Do not show again', 'vemoro-socialfeed' ) );
 		echo '</div><p>' . esc_html__( 'Questions or problems?', 'vemoro-socialfeed' ) . ' ';
 		self::renderSupportEmail();
 		echo '</p><p class="description">' . esc_html__( 'Supporting is entirely voluntary and has no effect on the plugin features.', 'vemoro-socialfeed' ) . '</p></div>';
 	}
 
 	public static function renderSupportCard(): void {
-		echo '<div class="lif-card lif-support-card"><h2>' . esc_html__( 'Support development and operation', 'vemoro-socialfeed' ) . '</h2>';
+		echo '<div class="vemoro-card vemoro-support-card"><h2>' . esc_html__( 'Support development and operation', 'vemoro-socialfeed' ) . '</h2>';
 		echo '<p>' . esc_html__( 'The plugin remains free of charge. Voluntary contributions help fund maintenance, security updates and the Vemoro connection service.', 'vemoro-socialfeed' ) . '</p><p>';
 		self::renderExternalLink( Config::LIBERAPAY_URL, __( 'Support via Liberapay', 'vemoro-socialfeed' ), 'button button-primary' );
 		echo ' ';
@@ -47,13 +47,13 @@ final class SupportNotice {
 	}
 
 	public function remindLater(): void {
-		$this->guard( 'lif_support_remind_later' );
+		$this->guard( 'vemoro_support_remind_later' );
 		update_user_meta( get_current_user_id(), self::REMIND_AT_META, time() + self::REMINDER_DELAY );
 		$this->redirectBack();
 	}
 
 	public function dismiss(): void {
-		$this->guard( 'lif_support_dismiss' );
+		$this->guard( 'vemoro_support_dismiss' );
 		update_user_meta( get_current_user_id(), self::DISMISSED_META, '1' );
 		delete_user_meta( get_current_user_id(), self::REMIND_AT_META );
 		$this->redirectBack();
@@ -82,7 +82,7 @@ final class SupportNotice {
 	}
 
 	private function guard( string $action ): void {
-		if ( ! current_user_can( 'read' ) ) {
+		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Insufficient permissions.', 'vemoro-socialfeed' ) );
 		}
 		check_admin_referer( $action );

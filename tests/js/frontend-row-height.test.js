@@ -9,20 +9,20 @@ class ClassList { add() {} remove() {} }
 function stage(height) {
 	return { offsetHeight: height, style: { height: '', removeProperty(name) { if ('height' === name) { this.height = ''; } } }, getBoundingClientRect() { return { height }; } };
 }
-function post(offsetTop, mediaStage) { return { offsetTop, offsetHeight: mediaStage.offsetHeight, querySelector(selector) { return '.lif-post__stage' === selector ? mediaStage : null; } }; }
+function post(offsetTop, mediaStage) { return { offsetTop, offsetHeight: mediaStage.offsetHeight, querySelector(selector) { return '.vemoro-post__stage' === selector ? mediaStage : null; } }; }
 
 const equalStages = [stage(400), stage(400)];
 const mixedStages = [stage(300), stage(500)];
 const posts = [post(0, equalStages[0]), post(0, equalStages[1]), post(600, mixedStages[0]), post(600, mixedStages[1])];
 const feed = {
 	dataset: {},
-	querySelectorAll(selector) { return '.lif-post' === selector ? posts : []; },
+	querySelectorAll(selector) { return '.vemoro-post' === selector ? posts : []; },
 	querySelector() { return null; },
 };
 const document = {
 	documentElement: { classList: new ClassList() },
 	querySelector() { return null; },
-	querySelectorAll(selector) { return '[data-lif-feed]' === selector ? [feed] : []; },
+	querySelectorAll(selector) { return '[data-vemoro-feed]' === selector ? [feed] : []; },
 };
 const browserWindow = { matchMedia: () => ({ matches: false }) };
 const source = fs.readFileSync(path.resolve(__dirname, '../../assets/js/frontend.js'), 'utf8');

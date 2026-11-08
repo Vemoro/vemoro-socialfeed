@@ -1,5 +1,5 @@
 <?php
-namespace LocalInstagramFeed\Diagnostics;
+namespace Vemoro\SocialFeed\Diagnostics;
 
 final class FailureTracker {
 	private const DISPLAY_AFTER = 2;
