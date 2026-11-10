@@ -246,7 +246,9 @@ Das Trennen einer dauerhaft widerrufenen Verbindung ist eine bestätigungspflich
 
 Deaktivieren entfernt Zeitpläne und Locks, aber keine Inhalte. Beim Löschen des Plugins bleiben Daten standardmäßig erhalten. Nur wenn zuvor „Alle Plugin-Daten bei Deinstallation löschen“ aktiviert wurde, entfernt `uninstall.php` Plugin-Beiträge, plugin-eigene Attachments, Tabellen, Optionen, Secrets, Transients und Zeitpläne endgültig. Wer die Installation bei bestehender Verbindung vollständig außer Betrieb nimmt, sollte daher vorher entweder die Verbindung mit Datenlöschung trennen oder die Deinstallationslöschung aktivieren.
 
-Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt ausschließlich plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
+Im Datenschutz-Tab steht zusätzlich „Verwaiste Mediendateien bereinigen“ zur Verfügung. Die Funktion berücksichtigt plugin-eigene Attachments ohne aktuelle Instagram-Zuordnung sowie erkennbare Altimporte mit Instagram-Dateinamen, die noch einem im Plugin-Index geführten Instagram-Beitrag zugeordnet sind. Dadurch werden auch unterbrochene Importe ohne Eigentumsmarkierung erfasst. Ein Dateiname allein genügt nicht; insbesondere unmarkierte, nicht verknüpfte Dateien werden nicht automatisch übernommen. Medien, die als Beitragsbild, in Inhalten, Metadaten, Theme-Einstellungen, Website-Icon, Logo oder anderen WordPress-Daten verwendet werden, bleiben erhalten und werden für spätere Bereinigungen als behalten gekennzeichnet. Vor der Ausführung sind Administratorberechtigung, Nonce und eine ausdrückliche Bestätigung erforderlich; parallel laufende Synchronisierungen werden durch denselben Lock ausgeschlossen.
+
+Neue Downloads speichern ihre Instagram-ID und Eigentumsmarkierung bereits beim Anlegen des Medieneintrags, bevor WordPress die Bildgrößen erzeugt. Wird diese Bildverarbeitung abgebrochen, kann der nächste Lauf die vorhandene Datei wiederverwenden, auch wenn noch kein Instagram-Indexeintrag geschrieben wurde.
 
 ## Grenzen
 
@@ -265,6 +267,12 @@ Administratoren sehen den optionalen Hinweis ausschließlich auf den Verwaltungs
 Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vemoro.de) gesendet werden. Die Adresse wird sowohl im Backend-Hinweis als auch in der Plugin-Verwaltung angezeigt.
 
 ## Changelog
+
+### 2.2.5
+
+- Speichert die Medienzuordnung vor der WordPress-Bildverarbeitung, damit abgebrochene Importe beim nächsten Versuch wiederverwendet werden.
+- Erkennt bei der ausdrücklich ausgelösten Medienbereinigung auch unmarkierte Altimporte unter indexierten Instagram-Beiträgen; aktuelle Zuordnungen und anderweitig verwendete Dateien bleiben geschützt.
+- Kennzeichnet erhaltene, gemeinsam verwendete Dateien, damit sie nicht erneut als Bereinigungskandidaten erscheinen.
 
 ### 2.2.3
 

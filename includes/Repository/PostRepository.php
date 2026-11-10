@@ -238,9 +238,7 @@ final class PostRepository {
 		);
 		foreach ( $candidates as $attachmentId ) {
 			if ( $this->attachmentReferencedOutside( $attachmentId, $pluginPostIds ) ) {
-				delete_post_meta( $attachmentId, '_vemoro_owned' );
-				delete_post_meta( $attachmentId, '_vemoro_media_id' );
-				delete_post_meta( $attachmentId, '_vemoro_source_host' );
+				$this->releaseAttachment( $attachmentId );
 				++$result['retained'];
 				continue;
 			}
@@ -267,10 +265,59 @@ final class PostRepository {
 				'meta_value'     => '1',
 			)
 		);
+		$owned = array_merge( $owned, $this->legacyAttachmentIds() );
 		if ( $owned ) {
 			update_meta_cache( 'post', array_map( 'intval', $owned ) ); }
 		$referenced = $wpdb->get_col( $wpdb->prepare( 'SELECT attachment_id FROM %i WHERE attachment_id > 0 UNION SELECT video_attachment_id FROM %i WHERE video_attachment_id > 0', $table, $table ) );
 		return array_values( array_diff( array_unique( array_map( 'intval', $owned ) ), array_unique( array_map( 'intval', $referenced ) ) ) );
+	}
+
+	/** @return array<int,int> */
+	private function legacyAttachmentIds(): array {
+		global $wpdb;
+		$table = $wpdb->prefix . 'vemoro_instagram_media';
+		$rows  = $wpdb->get_results( $wpdb->prepare( "SELECT media_id, post_id FROM %i WHERE parent_media_id = ''", $table ) );
+		$parents = array();
+		foreach ( $rows as $row ) {
+			$postId = (int) $row->post_id;
+			if ( '' !== (string) $row->media_id && Config::POST_TYPE === get_post_type( $postId ) && (string) get_post_meta( $postId, '_vemoro_media_id', true ) === (string) $row->media_id ) {
+				$parents[] = $postId;
+			}
+		}
+		if ( ! $parents ) {
+			return array();
+		}
+		$attachments = get_posts(
+			array(
+				'post_type'       => 'attachment',
+				'post_status'     => 'inherit',
+				'post_parent__in' => array_unique( $parents ),
+				'posts_per_page'  => -1,
+				'fields'          => 'ids',
+			)
+		);
+		update_meta_cache( 'post', $attachments );
+		return array_values(
+			array_filter(
+				array_map( 'intval', $attachments ),
+				static function ( int $id ): bool {
+					if ( metadata_exists( 'post', $id, '_vemoro_owned' ) || get_post_meta( $id, '_vemoro_retained', true ) ) {
+						return false;
+					}
+					// A filename alone is insufficient: only indexed plugin parents qualify.
+					$file = (string) get_post_meta( $id, '_wp_attached_file', true );
+					return (bool) preg_match( '/^instagram-[0-9]+(?:-[0-9]+)?(?:-(?:scaled|rotated))?\.(?:jpe?g|png|webp|gif|mp4)$/i', wp_basename( $file ) );
+				}
+			)
+		);
+	}
+
+	private function releaseAttachment( int $attachmentId ): void {
+		// Do not rediscover shared legacy imports as cleanup candidates on the next run.
+		update_post_meta( $attachmentId, '_vemoro_retained', '1' );
+		delete_post_meta( $attachmentId, '_vemoro_owned' );
+		delete_post_meta( $attachmentId, '_vemoro_media_id' );
+		delete_post_meta( $attachmentId, '_vemoro_source_host' );
 	}
 
 	private function attachmentDiskUsage( int $attachmentId ): int {
@@ -331,9 +378,7 @@ final class PostRepository {
 		$retainedAttachments = 0;
 		foreach ( $attachmentIds as $attachmentId ) {
 			if ( $this->attachmentReferencedOutside( $attachmentId, $postIds ) ) {
-				delete_post_meta( $attachmentId, '_vemoro_owned' );
-				delete_post_meta( $attachmentId, '_vemoro_media_id' );
-				delete_post_meta( $attachmentId, '_vemoro_source_host' );
+				$this->releaseAttachment( $attachmentId );
 				++$retainedAttachments;
 				continue;
 			}
@@ -390,9 +435,7 @@ final class PostRepository {
 			if ( '1' !== get_post_meta( $id, '_vemoro_owned', true ) ) {
 				continue; }
 			if ( $this->attachmentReferencedOutside( $id, array( $postId ) ) ) {
-				delete_post_meta( $id, '_vemoro_owned' );
-				delete_post_meta( $id, '_vemoro_media_id' );
-				delete_post_meta( $id, '_vemoro_source_host' );
+				$this->releaseAttachment( $id );
 				++$retained;
 				continue;}
 			if ( wp_delete_attachment( $id, true ) ) {
