@@ -62,7 +62,19 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           extensions: mysqli
-          tools: composer, wp-cli
+          tools: composer
+      - name: Install and verify WP-CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/wp-cli-bin"
+          curl --fail --show-error --silent --location --retry 3 --retry-all-errors \
+            https://github.com/wp-cli/wp-cli/releases/download/v2.12.0/wp-cli-2.12.0.phar \
+            -o "$RUNNER_TEMP/wp-cli-bin/wp"
+          echo "ce34ddd838f7351d6759068d09793f26755463b4a4610a5a5c0a97b68220d85c  $RUNNER_TEMP/wp-cli-bin/wp" | sha256sum --check
+          chmod +x "$RUNNER_TEMP/wp-cli-bin/wp"
+          echo "$RUNNER_TEMP/wp-cli-bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/wp-cli-bin/wp" --info
       - run: composer install --no-interaction --prefer-dist
       - name: Install Subversion
         run: sudo apt-get update && sudo apt-get install --yes subversion

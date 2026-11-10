@@ -130,6 +130,38 @@ final class MediaDownloadServiceTest extends WP_UnitTestCase {
 		return array( array( 'IMAGE' ), array( 'VIDEO' ), array( 'CAROUSEL_ALBUM' ) );
 	}
 
+	public function test_interrupted_thumbnail_generation_keeps_provenance_and_reuses_the_upload(): void {
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		$temporary = wp_tempnam( 'interrupted-instagram-import' );
+		$this->files[] = $temporary;
+		copy( DIR_TESTDATA . '/images/canola.jpg', $temporary );
+		$media = Media::fromArray( array( 'id' => '17955753504272253', 'media_type' => 'IMAGE' ) );
+		$file = array( 'name' => 'instagram-' . $media->id . '.jpg', 'tmp_name' => $temporary, 'error' => 0, 'size' => filesize( $temporary ), 'type' => 'image/jpeg' );
+		$downloads = new MediaDownloadService( new PostRepository() );
+		$attachmentId = 0;
+		$interrupt = function ( array $sizes, array $metadata, int $id ) use ( &$attachmentId, $media ): array {
+			$attachmentId = $id;
+			$this->files[] = get_attached_file( $id );
+			$this->assertSame( '1', get_post_meta( $id, '_vemoro_owned', true ) );
+			$this->assertSame( $media->id, get_post_meta( $id, '_vemoro_media_id', true ) );
+			$this->assertSame( 'scontent.cdninstagram.com', get_post_meta( $id, '_vemoro_source_host', true ) );
+			throw new RuntimeException( 'Simulated interruption during thumbnail generation.' );
+		};
+		add_filter( 'intermediate_image_sizes_advanced', $interrupt, 10, 3 );
+		try {
+			( new ReflectionMethod( $downloads, 'storeDownload' ) )->invoke( $downloads, $media, $file, 'scontent.cdninstagram.com', 0 );
+			$this->fail( 'The thumbnail generation should have been interrupted.' );
+		} catch ( RuntimeException $error ) {
+			$this->assertSame( 'Simulated interruption during thumbnail generation.', $error->getMessage() );
+		} finally {
+			remove_filter( 'intermediate_image_sizes_advanced', $interrupt, 10 );
+		}
+		$this->assertGreaterThan( 0, $attachmentId );
+		$this->assertNull( ( new PostRepository() )->index( $media->id ) );
+		$this->assertFileExists( get_attached_file( $attachmentId ) );
+		$this->assertSame( $attachmentId, $downloads->image( $media, '' ) );
+	}
+
 	private function attachment( bool $video = false, int $parent = 0 ): int {
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 		$uploads = wp_upload_dir();

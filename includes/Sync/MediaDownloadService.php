@@ -69,15 +69,8 @@ final class MediaDownloadService {
 				'size'     => filesize( $tmp ),
 				'type'     => $mime,
 			);
-			require_once ABSPATH . 'wp-admin/includes/media.php';
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-			$attachmentId = media_handle_sideload( $file, $parentPostId, wp_trim_words( $media->caption, 12, '…' ) );
-			if ( is_wp_error( $attachmentId ) ) {
-				throw new \RuntimeException( $attachmentId->get_error_message() ); }
+			$attachmentId = $this->storeDownload( $media, $file, (string) wp_parse_url( $finalUrl, PHP_URL_HOST ), $parentPostId );
 			$tmp = '';
-			update_post_meta( (int) $attachmentId, '_vemoro_owned', '1' );
-			update_post_meta( (int) $attachmentId, '_vemoro_media_id', $media->id );
-			update_post_meta( (int) $attachmentId, '_vemoro_source_host', (string) wp_parse_url( $finalUrl, PHP_URL_HOST ) );
 			if ( ! $video ) {
 				$this->updateAlt( (int) $attachmentId, $media );
 			}
@@ -86,6 +79,29 @@ final class MediaDownloadService {
 			if ( $tmp && file_exists( $tmp ) ) {
 				wp_delete_file( $tmp ); }
 		}
+	}
+
+	/** @param array<string,mixed> $file */
+	private function storeDownload( Media $media, array $file, string $sourceHost, int $parentPostId ): int {
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		// Store provenance at insertion, before thumbnail generation can exhaust time or memory.
+		$attachmentId = media_handle_sideload(
+			$file,
+			$parentPostId,
+			wp_trim_words( $media->caption, 12, '…' ),
+			array(
+				'meta_input' => array(
+					'_vemoro_media_id'    => $media->id,
+					'_vemoro_owned'       => '1',
+					'_vemoro_source_host' => $sourceHost,
+				),
+			)
+		);
+		if ( is_wp_error( $attachmentId ) ) {
+			throw new \RuntimeException( $attachmentId->get_error_message() );
+		}
+		return (int) $attachmentId;
 	}
 
 	private function findOwnedAttachment( string $mediaId, bool $video ): int {
