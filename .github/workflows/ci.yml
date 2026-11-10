@@ -156,8 +156,10 @@ jobs:
         with:
           path: .
           artifact-name: vemoro-socialfeed.spdx.json
+          upload-release-assets: false
       - uses: anchore/sbom-action@v0
         with:
           path: .
           format: cyclonedx-json
           artifact-name: vemoro-socialfeed.cdx.json
+          upload-release-assets: false
