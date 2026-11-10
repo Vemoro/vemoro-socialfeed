@@ -136,6 +136,35 @@ final class SecurityAndDeletionTest extends WP_UnitTestCase {
 		$this->assertSame( 0, $repo->orphanedOwnedMediaSummary()['candidates'] );
 	}
 
+	public function test_cleanup_retains_media_used_through_original_or_resized_urls(): void {
+		$repo = new PostRepository();
+		$attachments = array();
+		$posts = array();
+		foreach ( array( 'original_image', 'sizes', 'backup' ) as $variant ) {
+			$id = wp_insert_attachment( array( 'post_status' => 'inherit', 'post_mime_type' => 'image/jpeg' ) );
+			$attachments[] = $id;
+			update_post_meta( $id, '_vemoro_owned', '1' );
+			update_post_meta( $id, '_wp_attached_file', '2026/11/instagram-' . $id . '-scaled.jpg' );
+			$filename = 'instagram-' . $id . '-400x534.jpg';
+			if ( 'original_image' === $variant ) {
+				wp_update_attachment_metadata( $id, array( 'original_image' => $filename ) );
+			} elseif ( 'sizes' === $variant ) {
+				wp_update_attachment_metadata( $id, array( 'sizes' => array( 'medium' => array( 'file' => $filename ) ) ) );
+			} else {
+				update_post_meta( $id, '_wp_attachment_backup_sizes', array( 'full-orig' => array( 'file' => $filename ) ) );
+			}
+			$url = str_replace( wp_basename( wp_get_attachment_url( $id ) ), $filename, wp_get_attachment_url( $id ) );
+			$posts[] = self::factory()->post->create( array( 'post_content' => '<img src="' . esc_url( $url ) . '">' ) );
+		}
+		$result = $repo->cleanupOrphanedOwnedMedia();
+		$this->assertSame( 0, $result['deleted'] );
+		$this->assertSame( 3, $result['retained'] );
+		foreach ( $attachments as $id ) {
+			$this->assertNotNull( get_post( $id ) );
+			$this->assertSame( '1', get_post_meta( $id, '_vemoro_retained', true ) );
+		}
+	}
+
 	public function test_display_disabled_post_is_not_rendered(): void {
 		$post=self::factory()->post->create(array('post_type'=>Config::POST_TYPE,'post_status'=>'publish'));update_post_meta($post,'_vemoro_status','active');update_post_meta($post,'_vemoro_display_enabled','0');
 		$html=(new FeedRenderer(new PostRepository()))->render(array('post_id'=>$post));

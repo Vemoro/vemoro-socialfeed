@@ -273,6 +273,7 @@ Technische Fragen und Probleme können an [support@vemoro.de](mailto:support@vem
 - Speichert die Medienzuordnung vor der WordPress-Bildverarbeitung, damit abgebrochene Importe beim nächsten Versuch wiederverwendet werden.
 - Erkennt bei der ausdrücklich ausgelösten Medienbereinigung auch unmarkierte Altimporte unter indexierten Instagram-Beiträgen; aktuelle Zuordnungen und anderweitig verwendete Dateien bleiben geschützt.
 - Kennzeichnet erhaltene, gemeinsam verwendete Dateien, damit sie nicht erneut als Bereinigungskandidaten erscheinen.
+- Schützt auch Dateien, deren Originalbild, verkleinerte Bildgröße oder Bearbeitungssicherung außerhalb des Feeds per URL eingebunden ist.
 
 ### 2.2.3
 

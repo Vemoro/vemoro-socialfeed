@@ -79,6 +79,7 @@ For technical questions and problems, contact support@vemoro.de. The address is 
 * Stores media ownership and Instagram IDs before WordPress generates thumbnails, so interrupted image processing does not create unmarked duplicate uploads on retries.
 * Detects unmarked older imports attached to indexed Instagram posts during the explicit orphan cleanup. Current mappings and externally used media remain protected; filenames alone do not establish plugin ownership.
 * Marks shared files as retained so repeated cleanup does not rediscover them.
+* Preserves media referenced through resized, original or image-edit backup URLs when deleting plugin-owned files.
 
 = 2.2.4 =
 * Reuses existing local images, video posters, videos and carousel media when synchronization updates a post or performs a full refresh, preventing duplicate Media Library uploads.

@@ -467,6 +467,31 @@ final class PostRepository {
 		if ( $references ) {
 			return true; }
 		$url = wp_get_attachment_url( $attachmentId );
+		$urls = array( is_string( $url ) ? $url : '' );
+		if ( is_string( $url ) && '' !== $url ) {
+			$directory = substr( $url, 0, strrpos( $url, '/' ) + 1 );
+			$metadata  = wp_get_attachment_metadata( $attachmentId );
+			$variants  = is_array( $metadata ) ? (array) ( $metadata['sizes'] ?? array() ) : array();
+			if ( is_array( $metadata ) && ! empty( $metadata['original_image'] ) ) {
+				$variants[] = array( 'file' => $metadata['original_image'] );
+			}
+			$variants = array_merge( $variants, (array) get_post_meta( $attachmentId, '_wp_attachment_backup_sizes', true ) );
+			foreach ( $variants as $variant ) {
+				if ( ! empty( $variant['file'] ) ) {
+					$urls[] = $directory . wp_basename( (string) $variant['file'] );
+				}
+			}
+		}
+		foreach ( array_unique( $urls ) as $mediaUrl ) {
+			if ( $this->attachmentDataReferencedOutside( $attachmentId, $pluginPostIds, $mediaUrl ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** @param array<int,int> $pluginPostIds */
+	private function attachmentDataReferencedOutside( int $attachmentId, array $pluginPostIds, string $url ): bool {
 		global $wpdb;
 		$idMarker        = '%wp-image-' . $attachmentId . '%';
 		$serializedId    = '%i:' . $attachmentId . ';%';
