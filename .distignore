@@ -2,6 +2,10 @@
 /.git
 /.gitignore
 /.github
+/.agents
+/AGENTS.md
+/CLAUDE.md
+/CONTRIBUTING.md
 /.distignore
 /artifacts
 /composer.json

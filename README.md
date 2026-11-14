@@ -204,6 +204,8 @@ Nach einer erfolgreichen Synchronisierung:
 
 ## Tests und Entwicklung
 
+Regeln für Beiträge und agentische Arbeit stehen in [CONTRIBUTING.md](CONTRIBUTING.md); [AGENTS.md](AGENTS.md) führt zu den passenden Arbeitsabläufen.
+
 Der vollständige Quellcode wird öffentlich unter [github.com/Vemoro/vemoro-socialfeed](https://github.com/Vemoro/vemoro-socialfeed) gepflegt. Die JavaScript-Dateien in `assets/js/` und die CSS-Dateien in `assets/css/` sind die vollständigen, menschenlesbaren Quelldateien, die das Plugin ausführt. Sie werden direkt gepflegt und weder generiert noch gebündelt, minifiziert oder kompiliert. Ein npm-, webpack- oder sonstiger Asset-Build ist daher nicht erforderlich.
 
 ```bash
